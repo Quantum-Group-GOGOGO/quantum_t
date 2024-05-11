@@ -73,7 +73,7 @@ class DoubleWindow:
             self.refresh()
             return 0
     def setBeaconPosition(self,index):
-    
+        pass
     def march(self):
         if not self._futureWindow.march():
             self._historyWindow.march()
