@@ -72,7 +72,7 @@ class DoubleWindow:
             self._beacon_index = self._historyWindowSize + self._index  
             self.refresh()
             return 0
-    def setBeaconPosition(self,index):
+
     
     def march(self):
         if not self._futureWindow.march():

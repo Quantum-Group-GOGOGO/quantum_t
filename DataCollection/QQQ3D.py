@@ -14,10 +14,11 @@ ib.connect('127.0.0.1', 7597, clientId=1)
 
 #Select Data Set
 contract = Contract()
-contract.symbol = "NDX"
-contract.secType = "IND"
-contract.currency = "USD"
-contract.exchange = "NASDAQ"
+contract  = Stock('QQQ','SMART','USD')
+#contract.symbol = "NDX"
+#contract.secType = "IND"
+#contract.currency = "USD"
+#contract.exchange = "NASDAQ"
 #contract.symbol = "MNQ"
 #contract.secType = "FUT"
 #contract.exchange = "CME"
@@ -28,8 +29,8 @@ contract.exchange = "NASDAQ"
 
 #Take History Data
 bars = ib.reqHistoricalData(
-    contract, endDateTime='', durationStr='30 Y',
-    barSizeSetting='1 day', whatToShow='TRADES', useRTH=False)
+    contract, endDateTime='20240505 00:00:00', durationStr='1 D',
+    barSizeSetting='1 min', whatToShow='TRADES', useRTH=False)
 
 df = util.df(bars)
 
@@ -41,8 +42,8 @@ print(df.head())
 print(df.tail())
 date=df[['date']]
 open=df[['open']]
-date['date']=(date['date']-date['date'][0])/ timedelta(minutes=1)
-date['date'].astype("int")
+#date['date']=(date['date']-date['date'][0])/ timedelta(minutes=1)
+#date['date'].astype("int")
 plt.plot(date,open,'-')
 plt.xlabel('Time')
 plt.ylabel('MNQ')
