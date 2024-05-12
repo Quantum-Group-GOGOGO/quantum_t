@@ -6,6 +6,7 @@ import numpy as np
 import datetime
 from datetime import timedelta
 import pandas as pd
+from QQQXD import *
 util.startLoop()  # uncomment this line when in a notebook
 
 #Connection Establish
@@ -15,37 +16,8 @@ ib.connect('127.0.0.1', 7597, clientId=1)
 #Select Data Set
 contract = Contract()
 contract  = Stock('QQQ','SMART','USD')
-#contract.symbol = "NDX"
-#contract.secType = "IND"
-#contract.currency = "USD"
-#contract.exchange = "NASDAQ"
-#contract.symbol = "MNQ"
-#contract.secType = "FUT"
-#contract.exchange = "CME"
-#contract.currency = "USD"
-#contract.lastTradeDateOrContractMonth = "202403"
 
-#ib.reqMarketDataType(3)
+df = QQQXD(ib,'20240506',7,'1 hour')
 
-#Take History Data
-bars = ib.reqHistoricalData(
-    contract, endDateTime='20240505 00:00:00', durationStr='1 D',
-    barSizeSetting='1 min', whatToShow='TRADES', useRTH=False)
-
-df = util.df(bars)
-
-#Save Data
-df.to_pickle('MNQtraindata')
-
-#Show Data in Open Price
-print(df.head())
-print(df.tail())
-date=df[['date']]
-open=df[['open']]
-#date['date']=(date['date']-date['date'][0])/ timedelta(minutes=1)
-#date['date'].astype("int")
-plt.plot(date,open,'-')
-plt.xlabel('Time')
-plt.ylabel('MNQ')
-plt.tight_layout()
-plt.show()
+print(df.head(30))
+df.to_csv('datatest.csv')
