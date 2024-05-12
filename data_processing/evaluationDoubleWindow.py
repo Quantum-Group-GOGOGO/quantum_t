@@ -13,8 +13,8 @@ class EvaluationDoubleWindow(DoubleWindow):
     def computeValue(self):
         result = 0.0
         for index in range(0,self._evaluationsize):
-            result += (self.average(index)-self.average(0))*exp(index*(-self._activation))
-        result = result / self._statistics._normalfactor / self.average(0)
+            result += (self.close(index)-self.close(0))*exp(index*(-self._activation))
+        result = result / self._statistics._normalfactor / self.close(0)
         self._statistics._value = result
     
     def normalization(self):

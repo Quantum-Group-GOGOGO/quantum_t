@@ -1,4 +1,5 @@
 import tensorflow as tf
+import numpy as np
 
 def get_next_batch(batch_size, x_train, y_train, index_in_epoch, perm_array):
     start = index_in_epoch
@@ -10,7 +11,7 @@ def get_next_batch(batch_size, x_train, y_train, index_in_epoch, perm_array):
     end = index_in_epoch
     return x_train[perm_array[start:end]], y_train[perm_array[start:end]]
 
-def build_rnn_model(n_steps, n_inputs, n_neurons, n_outputs, n_layers, learning_rate):
+def build_rnn_model(x_train,n_steps, n_inputs, n_neurons, n_outputs, n_layers, learning_rate):
     tf.compat.v1.reset_default_graph()
     tf.compat.v1.disable_eager_execution()
     
