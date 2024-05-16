@@ -6,7 +6,7 @@ import numpy as np
 import datetime
 from datetime import timedelta
 import pandas as pd
-from QQQXD import *
+from utils import QQQXD
 util.startLoop()  # uncomment this line when in a notebook
 
 #Connection Establish
