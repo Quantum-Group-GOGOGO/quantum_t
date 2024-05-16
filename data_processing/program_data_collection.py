@@ -22,7 +22,7 @@ contract.exchange = "NASDAQ"
 #contract.secType = "FUT"
 #contract.exchange = "CME"
 #contract.currency = "USD"
-#contract.lastTradeDateOrContractMonth = "202403"
+#contract.lastTradeDateOrContractMonth = "202406"
 
 #ib.reqMarketDataType(3)
 
