@@ -19,6 +19,6 @@ class BasicStrategyMachine:
         self.current_time = self.data.date_last()
         return False
     
-#machine1=BasicStrategyMachine()
-#machine2=BasicStrategyMachine()
-#print(machine2.current_time.timestamp()-machine1.current_time.timestamp())
+machine1=BasicStrategyMachine()
+machine2=BasicStrategyMachine()
+print(machine2.current_time.timestamp()-machine1.current_time.timestamp())
