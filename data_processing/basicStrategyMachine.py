@@ -1,8 +1,9 @@
 import pandas as pd
 import datetime as dt
 import movingWindow as mw
-from datetime import timedelta
+# from datetime import timedelta
 from datetime import datetime
+
 class BasicStrategyMachine:
     def __init__(self,dataWindow=None):
         self.data=dataWindow
