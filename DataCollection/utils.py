@@ -1,51 +1,64 @@
 import pandas as pd
-import datetime
-from datetime import timedelta
-import pandas as pd
-# from DatacollectionQQQ1D import DatacollectionQQQ1Day as QQQ1D
-# from ConcatDF import Concat_DF
+from datetime import datetime, timedelta
 from ib_insync import *
-def DatacollectionQQQ1Day(IBobject, date, barSize):
-    contract = Contract()
-    contract  = Stock('QQQ','SMART','USD')
-    bars = IBobject.reqHistoricalData(
-    contract, endDateTime=(date+' 00:00:00'), durationStr='1 D',
-    barSizeSetting=barSize, whatToShow='TRADES', useRTH=False)
+from tqdm import tqdm
+class HistoricalDataCollector:
+    def __init__(self, IBobject, args):
+        self.IBobject = IBobject
+        self.start_date = datetime.strptime(args.date, '%Y%m%d').date()
+        self.bar_size = args.bar_size
+        self.contract_symbol = args.contract_symbol
+        self.secType = args.secType
+        self.exchange = args.exchange
+        self.currency = args.currency
+        self.lastTradeDateOrContractMonth = args.lastTradeDateOrContractMonth if args.lastTradeDateOrContractMonth else None
 
-    df = util.df(bars)
-    return df
+    @staticmethod
+    def is_weekend(date_str):
+        date_format = '%Y%m%d'
+        date = datetime.strptime(date_str, date_format).date()
+        return date.weekday() == 5 or date.weekday() == 6
 
-def Concat_DF_Sort(df1,df2):
-# Concatenate the DataFrames
-    df_combined = pd.concat([df1, df2])
+    def _create_contract(self):
+        contract = Contract()
+        contract.symbol = self.contract_symbol
+        contract.secType = self.secType
+        contract.exchange = self.exchange
+        contract.currency = self.currency
+        if self.lastTradeDateOrContractMonth:
+            contract.lastTradeDateOrContractMonth = self.lastTradeDateOrContractMonth
+        return contract
 
-    # Sort by date
-    df_combined = df_combined.sort_values(by='date')
-    df_combined = df_combined.drop_duplicates(subset='date', keep='first')
-    return df_combined
+    def _req_historical_data_for_date(self, date_str):
+        if not self.is_weekend(date_str):  # Ensure it's not a weekend before requesting data
+            date = datetime.strptime(date_str, '%Y%m%d').date()
+            # Adjust the format of endDateTime to include spaces between date, time, and timezone (assuming local timezone)
+            formatted_end_date = f'{date.strftime("%Y%m%d")}-{date.strftime("%H:%M:%S")}'
+            contract = self._create_contract()
+            bars = self.IBobject.reqHistoricalData(
+                contract=contract,
+                endDateTime=formatted_end_date,  # Updated format here
+                durationStr='1 D',
+                barSizeSetting=self.bar_size,
+                whatToShow='TRADES',
+                useRTH=False
+            )
+            return util.df(bars)
+        return None  # Return None if it's a weekend day
 
-def QQQXD(IBobject,initial_date,date_num, barSize):
-    for date_num_index in range(date_num):
-        date_index=datesub(initial_date,date_num_index)
-        if date_num_index==0:
-            df=DatacollectionQQQ1Day(IBobject,date_index, barSize)
-        else:
-            df=Concat_DF_Sort(df,DatacollectionQQQ1Day(IBobject,date_index, barSize))
-    df=df.reset_index().drop('index', axis=1)
-    return df
+    def collect_historical_data(self, num_days):
+        dfs = []
+        for i in tqdm(range(num_days)):
+            date_str = (self.start_date - timedelta(days=i)).strftime('%Y%m%d')
+            df = self._req_historical_data_for_date(date_str)
+            if df is not None:  # Only append if data was collected (not a weekend)
+                dfs.append(df)
+        combined_df = pd.concat(dfs, ignore_index=True).drop_duplicates(subset='date', keep='first')
+        combined_df.sort_values(by='date', inplace=True)
+        return combined_df
 
-def dateadd(initial_date,date_add):
-    start_date = datetime.datetime.strptime(initial_date, '%Y%m%d').date()
-    delta = datetime.timedelta(days=date_add)
-    new_date = start_date + delta
-    return new_date.strftime('%Y%m%d')
-def datesub(initial_date,date_sub):
-    start_date = datetime.datetime.strptime(initial_date, '%Y%m%d').date()
-    delta = datetime.timedelta(days=date_sub)
-    new_date = start_date - delta
-    return new_date.strftime('%Y%m%d')
-def is_weekend(date_str):
-    date_format = '%Y%m%d'
-    date = datetime.datetime.strptime(date_str, date_format).date()
-    # Check if the day of the week is Saturday (5) or Sunday (6)
-    return date.weekday() == 5 or date.weekday() == 6
+# Usage remains the same
+# args = ...  # Define your arguments here
+# ib_object = ...  # Initialize your Interactive Brokers API object
+# collector = HistoricalDataCollector(ib_object, args)
+# historical_data = collector.collect_historical_data(10)  # Collect data for the past 10 days

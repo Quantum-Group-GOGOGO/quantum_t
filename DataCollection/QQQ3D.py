@@ -6,18 +6,41 @@ import numpy as np
 import datetime
 from datetime import timedelta
 import pandas as pd
-from utils import QQQXD
+
+from utils import HistoricalDataCollector
 util.startLoop()  # uncomment this line when in a notebook
-
+from config import parse_args
 #Connection Establish
-ib = IB()
-ib.connect('127.0.0.1', 7597, clientId=1)
+def main():
 
-#Select Data Set
-contract = Contract()
-contract  = Stock('QQQ','SMART','USD')
+    args = parse_args()
+    ib = IB()
+    ib.connect('127.0.0.1', 7597, clientId=1)
 
-df = QQQXD(ib,'20240506',7,'1 hour')
+    if args.contract_symbol == 'QQQ':
+        args.secType = "IND"
+        args.exchange = "SMART"
+        args.currency = "USD"
+    elif args.contract_symbol == 'NDX':
+        args.secType = "IND"
+        args.exchange = "NASDAQ"
+        args.currency = "USD"
+    elif args.contract_symbol == 'MNQ':
+        args.secType = "FUT"
+        args.exchange = "CME"
+        args.currency = "USD"
+        args.lastTradeDateOrContractMonth = "202406"  
+    else:
+        args.secType = "IND"
+        args.exchange = "SMART"
+        args.currency = "USD"
+           
+    #Select Data Set
+    DataCollector = HistoricalDataCollector(IBobject = ib,args = args)
+    df = DataCollector.collect_historical_data(num_days=args.num_days)
 
-print(df.head(30))
-df.to_csv('datatest.csv')
+    print(df.head(30))
+    df.to_csv(f'{args.contract_symbol}_datatest.csv')
+
+if __name__ == '__main__':
+    main()

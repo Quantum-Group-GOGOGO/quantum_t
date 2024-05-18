@@ -14,15 +14,15 @@ ib.connect('127.0.0.1', 7597, clientId=1)
 
 #Select Data Set
 contract = Contract()
-contract.symbol = "NDX"
-contract.secType = "IND"
+# contract.symbol = "NDX"
+# contract.secType = "IND"
+# contract.currency = "USD"
+# contract.exchange = "NASDAQ"
+contract.symbol = "MNQ"
+contract.secType = "FUT"
+contract.exchange = "CME"
 contract.currency = "USD"
-contract.exchange = "NASDAQ"
-#contract.symbol = "MNQ"
-#contract.secType = "FUT"
-#contract.exchange = "CME"
-#contract.currency = "USD"
-#contract.lastTradeDateOrContractMonth = "202406"
+contract.lastTradeDateOrContractMonth = "202406"
 
 #ib.reqMarketDataType(3)
 
