@@ -3,7 +3,7 @@ import datetime
 from datetime import timedelta
 import pandas as pd
 # from DatacollectionQQQ1D import DatacollectionQQQ1Day as QQQ1D
-from ConcatDF import Concat_DF
+# from ConcatDF import Concat_DF
 from ib_insync import *
 def DatacollectionQQQ1Day(IBobject, date, barSize):
     contract = Contract()
@@ -30,7 +30,7 @@ def QQQXD(IBobject,initial_date,date_num, barSize):
         if date_num_index==0:
             df=DatacollectionQQQ1Day(IBobject,date_index, barSize)
         else:
-            df=Concat_DF.Concat_DF_Sort(df,DatacollectionQQQ1Day(IBobject,date_index, barSize))
+            df=Concat_DF_Sort(df,DatacollectionQQQ1Day(IBobject,date_index, barSize))
     df=df.reset_index().drop('index', axis=1)
     return df
 
