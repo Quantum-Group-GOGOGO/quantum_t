@@ -18,7 +18,7 @@ def main():
     ib.connect('127.0.0.1', 7597, clientId=1)
 
     if args.contract_symbol == 'QQQ':
-        args.secType = "IND"
+        args.secType = "FUT"
         args.exchange = "SMART"
         args.currency = "USD"
     elif args.contract_symbol == 'NDX':
@@ -33,14 +33,13 @@ def main():
     else:
         args.secType = "IND"
         args.exchange = "SMART"
-        args.currency = "USD"
-           
+        args.currency = "USD"       
     #Select Data Set
-    DataCollector = HistoricalDataCollector(IBobject = ib,args = args)
-    df = DataCollector.collect_historical_data(num_days=args.num_days)
+        DataCollector = HistoricalDataCollector(IBobject = ib,args = args)
+        df = DataCollector.collect_historical_data(num_days=args.num_days)
 
-    print(df.head(30))
-    df.to_csv(f'{args.contract_symbol}_datatest.csv')
+        print(df.head(30))
+        df.to_csv(f'{args.contract_symbol}_datatest.csv')
 
 if __name__ == '__main__':
     main()
