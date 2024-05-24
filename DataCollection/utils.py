@@ -33,7 +33,7 @@ class HistoricalDataCollector:
         if not self.is_weekend(date_str):  # Ensure it's not a weekend before requesting data
             date = datetime.strptime(date_str, '%Y%m%d').date()
             # Adjust the format of endDateTime to include spaces between date, time, and timezone (assuming local timezone)
-            formatted_end_date = f'{date.strftime("%Y%m%d")}-{date.strftime("%H:%M:%S")}'
+            formatted_end_date = f'{date.strftime("%Y%m%d")} {date.strftime("%H:%M:%S")}'
             contract = self._create_contract()
             bars = self.IBobject.reqHistoricalData(
                 contract=contract,
@@ -53,8 +53,13 @@ class HistoricalDataCollector:
             df = self._req_historical_data_for_date(date_str)
             if df is not None:  # Only append if data was collected (not a weekend)
                 dfs.append(df)
-        combined_df = pd.concat(dfs, ignore_index=True).drop_duplicates(subset='date', keep='first')
-        combined_df.sort_values(by='date', inplace=True)
+        try:
+            # import pdb;pdb.set_trace()
+            combined_df = pd.concat(dfs, ignore_index=True)
+            combined_df = combined_df.drop_duplicates(subset='date')
+            combined_df =  combined_df.sort_values(by='date', ascending=False,inplace=False)  
+        except ValueError:  # Handle the case where no data was collected
+            combined_df = pd.DataFrame()
         return combined_df
 
 # Usage remains the same
