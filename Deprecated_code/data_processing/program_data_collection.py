@@ -18,31 +18,35 @@ contract = Contract()
 # contract.secType = "IND"
 # contract.currency = "USD"
 # contract.exchange = "NASDAQ"
-contract.symbol = "MNQ"
-contract.secType = "FUT"
-contract.exchange = "CME"
+#contract.symbol = "MNQ"
+#contract.secType = "FUT"
+#contract.exchange = "CME"
+#contract.currency = "USD"
+#contract.lastTradeDateOrContractMonth = "202406"
+contract.symbol = "QQQ"
+contract.secType = "STK"
 contract.currency = "USD"
-contract.lastTradeDateOrContractMonth = "202406"
+contract.exchange = "NASDAQ"
 
 #ib.reqMarketDataType(3)
 
 #Take History Data
 bars = ib.reqHistoricalData(
-    contract, endDateTime='', durationStr='30 Y',
-    barSizeSetting='1 day', whatToShow='TRADES', useRTH=False)
+    contract, endDateTime='20140301 00:00:00', durationStr='1 D',
+    barSizeSetting='1 min', whatToShow='TRADES', useRTH=False)
 
 df = util.df(bars)
 
 #Save Data
-df.to_pickle('MNQtraindata')
+#df.to_pickle('MNQtraindata')
 
 #Show Data in Open Price
 print(df.head())
 print(df.tail())
 date=df[['date']]
 open=df[['open']]
-date['date']=(date['date']-date['date'][0])/ timedelta(minutes=1)
-date['date'].astype("int")
+#date['date']=(date['date']-date['date'][0])/ timedelta(minutes=1)
+#date['date'].astype("int")
 plt.plot(date,open,'-')
 plt.xlabel('Time')
 plt.ylabel('MNQ')

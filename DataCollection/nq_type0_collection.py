@@ -66,7 +66,7 @@ def NQ_CQG_read_all():
         df_set[i]=NQ_CQG_read(file)
     return df_set
 
-def NQ_CQG_read_fromDate(end_date,num_days):
+def NQ_CQG_read_fromDate(end_date,num_days):#
     start_date=end_date-timedelta(days=num_days)
     y,s=NQ_future_select(end_date)
     end_index=NQ_future_ystoi(y,s)
