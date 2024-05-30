@@ -53,25 +53,30 @@ def main():
         args.exchange = "SMART"
         args.currency = "USD"       
     #Select Data Set
-    first_time = True
+
+    interval = args.bar_size.split(' ')[1]
+    if args.size == "1week":
+        repeat_times = 1
+    else:
+        repeat_times = 73
     # import pdb;pdb.set_trace()
     all_dfs = []
-    for i in tqdm(range(1)):
+    for i in tqdm(range(repeat_times)):
         DataCollector = HistoricalDataCollector(IBobject=ib, args=args)
         df = DataCollector.collect_historical_data(num_days=args.num_days)
         if df.empty:
             continue
         if first_time:
-            df.to_csv(f'{args.contract_symbol}_1week_per_day.csv', mode='w', index=False)  # 首次写入，包括表头
+            df.to_csv(f'{args.contract_symbol}_{args.size}_per_{interval}.csv', mode='w', index=False)  # 首次写入，包括表头
             first_time = False
         else:
-            df.to_csv(f'{args.contract_symbol}_1week_per_day.csv', mode='a', header=False, index=False)  # 后续迭代，追加数据，不写表头
+            df.to_csv(f'{args.contract_symbol}_{args.size}_per_{interval}.csv', mode='a', header=False, index=False)  # 后续迭代，追加数据，不写表头
         args.date = calculate_previous_date(args.date, args.num_days)
         print(i,args.date)
         print(df.head(5))
         all_dfs.append(df)
     combined_df = pd.concat(all_dfs, ignore_index=True)
-    combined_df.to_pickle(f'{args.contract_symbol}_1week_per_day.pickle')    
+    combined_df.to_pickle(f'{args.contract_symbol}_{args.size}_per_{interval}.pkl')    
 
 if __name__ == '__main__':
     main()
