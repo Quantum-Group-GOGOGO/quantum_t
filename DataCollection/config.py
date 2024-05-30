@@ -7,7 +7,7 @@ def parse_args():
     parser.add_argument('--bar_size', default='1 min')
     parser.add_argument('--num_days', default = 10 ,type=int,help="number of days to download")
     # parser.add_argument('--duration', default='30 Y')lastTradeDateOrContractMonth
-    parser.add_argument('--contract_symbol', default='QQQ',type=str,help="contract symbol,")
+    parser.add_argument('--contract_symbol', default='NDX',type=str,help="contract symbol,")
     parser.add_argument('--lastTradeDateOrContractMonth', default=None,type=str,help="YYYYMM,contract symbol,")
 
     args = parser.parse_args()

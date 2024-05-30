@@ -10,33 +10,34 @@ util.startLoop()  # uncomment this line when in a notebook
 
 #Connection Establish
 ib = IB()
-ib.connect('127.0.0.1', 7597, clientId=1)
+ib.connect('127.0.0.1', 7597, clientId=12)
 
 #Select Data Set
 contract = Contract()
-# contract.symbol = "NDX"
-# contract.secType = "IND"
-# contract.currency = "USD"
-# contract.exchange = "NASDAQ"
+contract.symbol = "NDX"
+contract.secType = "IND"
+contract.currency = "USD"
+contract.exchange = "NASDAQ"
 #contract.symbol = "MNQ"
 #contract.secType = "FUT"
 #contract.exchange = "CME"
 #contract.currency = "USD"
 #contract.lastTradeDateOrContractMonth = "202406"
-contract.symbol = "QQQ"
-contract.secType = "STK"
-contract.currency = "USD"
-contract.exchange = "NASDAQ"
+# contract.symbol = "QQQ"
+# contract.secType = "STK"
+# contract.currency = "USD"
+# contract.exchange = "NASDAQ"
 
 #ib.reqMarketDataType(3)
 
 #Take History Data
 bars = ib.reqHistoricalData(
-    contract, endDateTime='20140301 00:00:00', durationStr='1 D',
+    # contract, endDateTime='20240221 00:00:00  US/Eastern', durationStr='1 D',
+    contract, endDateTime='20240501 00:00:00 US/Eastern', durationStr='30 D',
     barSizeSetting='1 min', whatToShow='TRADES', useRTH=False)
-
+print(bars)
 df = util.df(bars)
-
+df.to_csv('NDXtraindata.csv')
 #Save Data
 #df.to_pickle('MNQtraindata')
 

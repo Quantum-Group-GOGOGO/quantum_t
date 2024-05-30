@@ -37,7 +37,7 @@ def main():
 
     if args.contract_symbol == 'QQQ':
         args.secType = "STK"
-        args.exchange = "SMART"
+        args.exchange = "NASDAQ"
         args.currency = "USD"
     elif args.contract_symbol == 'NDX':
         args.secType = "IND"
