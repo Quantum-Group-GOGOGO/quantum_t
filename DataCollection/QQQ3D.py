@@ -58,7 +58,7 @@ def main():
     if args.size == "1week":
         repeat_times = 1
     else:
-        repeat_times = 73
+        repeat_times = 37
     # import pdb;pdb.set_trace()
     all_dfs = []
     for i in tqdm(range(repeat_times)):
