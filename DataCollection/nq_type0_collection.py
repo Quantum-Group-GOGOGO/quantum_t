@@ -114,5 +114,6 @@ def readNQ_xday_from_CQG(end_date_str,num_days):
 dt=datetime.datetime.strptime('19991022','%Y%m%d')
 #print(dt.date())
 #print(NQ_CQG_read_fromDate(dt,0))
-df=readNQ_xday_from_CQG('20240120',300)
+df=readNQ_xday_from_CQG('20240501',366)
 print(df.head())
+df.to_pickle('NQ2024.pkl')
