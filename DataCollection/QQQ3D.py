@@ -61,6 +61,7 @@ def main():
         repeat_times = 37
     # import pdb;pdb.set_trace()
     all_dfs = []
+    first_time = True
     for i in tqdm(range(repeat_times)):
         DataCollector = HistoricalDataCollector(IBobject=ib, args=args)
         df = DataCollector.collect_historical_data(num_days=args.num_days)
