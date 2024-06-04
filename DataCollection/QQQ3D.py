@@ -65,8 +65,13 @@ def main():
     for i in tqdm(range(repeat_times)):
         DataCollector = HistoricalDataCollector(IBobject=ib, args=args)
         df = DataCollector.collect_historical_data(num_days=args.num_days)
+        
         if df.empty:
             continue
+        # sort the dataframe by date in descending order
+        df =  df.sort_values(by='date', ascending=True,inplace=False)
+        df.rename(columns={'date': 'datetime'}, inplace=True)
+
         if first_time:
             df.to_csv(f'{args.contract_symbol}_{args.size}_per_{interval}.csv', mode='w', index=False)  # 首次写入，包括表头
             first_time = False
@@ -77,6 +82,8 @@ def main():
         print(df.head(5))
         all_dfs.append(df)
     combined_df = pd.concat(all_dfs, ignore_index=True)
+    combined_df =  combined_df.sort_values(by='datetime', ascending=True,inplace=False)
+    combined_df.to_csv(f'{args.contract_symbol}_{args.size}_per_{interval}.csv', mode='w', index=False)
     combined_df.to_pickle(f'{args.contract_symbol}_{args.size}_per_{interval}.pkl')    
 
 if __name__ == '__main__':
