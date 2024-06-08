@@ -100,7 +100,7 @@ def readNQ_xday_from_CQG(end_date_str,num_days):
         if df is not None:
             dfs.append(df)
     combined_df = pd.concat(dfs, ignore_index=True).drop_duplicates(subset='datetime', keep='first')
-    combined_df.sort_values(by='datetime', inplace=True)
+    combined_df.sort_values(by='datetime', inplace=True, ascending=False)
     return combined_df
 
 #data_path_prefix="/Users/wentianwang/Library/CloudStorage/GoogleDrive-littlenova223@gmail.com/My Drive/quantum_t_data"
@@ -111,9 +111,17 @@ def readNQ_xday_from_CQG(end_date_str,num_days):
 #print(df_set[1].head(5))
 
 #print(NQ_CQG_filename_str(1998,2))
-dt=datetime.datetime.strptime('19991022','%Y%m%d')
+#dt=datetime.datetime.strptime('19991022','%Y%m%d')
 #print(dt.date())
 #print(NQ_CQG_read_fromDate(dt,0))
-df=readNQ_xday_from_CQG('20240501',366)
+df=readNQ_xday_from_CQG('20240501',130)
 print(df.head())
-df.to_pickle('NQ2024.pkl')
+df.to_pickle('./tempdata/NQ2024.pkl')
+#df=readNQ_xday_from_CQG('20000101',180)
+#print(df.head())
+#df.to_pickle('./tempdata/NQ1999.pkl')
+#for i in range(2024,2025):
+#    st1=str(i)+'0101'
+#    df=readNQ_xday_from_CQG(st1,366)
+#    st2='./tempdata/NQ'+str(i-1)+'.pkl'
+#    df.to_pickle(st2)
