@@ -36,6 +36,6 @@ def add_one_hour_and_save(input_folder, output_folder):
                 file.writelines(processed_lines)
 
 # 使用示例
-input_folder = 'Wang\\Individual\\NQ'  # 输入文件夹路径
-output_folder = 'data\\processNQ'  # 输出文件夹路径
+#input_folder = '/Users/wentianwang/Library/CloudStorage/GoogleDrive-littlenova223@gmail.com/My Drive/quantum_t_data/raw/NQ_historic/Individual/NQ/'  # 输入文件夹路径
+#output_folder = '/Users/wentianwang/Library/CloudStorage/GoogleDrive-littlenova223@gmail.com/My Drive/quantum_t_data/raw/NQ_historic/Individual/NQ_EDT/'  # 输出文件夹路径
 add_one_hour_and_save(input_folder, output_folder)

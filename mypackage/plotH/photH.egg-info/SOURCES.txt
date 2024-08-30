@@ -1,0 +1,5 @@
+setup.py
+photH.egg-info/PKG-INFO
+photH.egg-info/SOURCES.txt
+photH.egg-info/dependency_links.txt
+photH.egg-info/top_level.txt

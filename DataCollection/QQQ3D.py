@@ -43,11 +43,11 @@ def main():
         args.secType = "IND"
         args.exchange = "NASDAQ"
         args.currency = "USD"
-    elif args.contract_symbol == 'MNQ':
+    elif args.contract_symbol == 'NQ':
         args.secType = "FUT"
         args.exchange = "CME"
         args.currency = "USD"
-        args.lastTradeDateOrContractMonth = "202409"  
+        args.lastTradeDateOrContractMonth = "202406"  
     else:
         args.secType = "IND"
         args.exchange = "SMART"
@@ -66,6 +66,7 @@ def main():
         DataCollector = HistoricalDataCollector(IBobject=ib, args=args)
         df = DataCollector.collect_historical_data(num_days=args.num_days)
         
+        
         if df.empty:
             continue
         # sort the dataframe by date in descending order
@@ -79,10 +80,12 @@ def main():
             df.to_csv(f'{args.contract_symbol}_{args.size}_per_{interval}.csv', mode='a', header=False, index=False)  # 后续迭代，追加数据，不写表头
         args.date = calculate_previous_date(args.date, args.num_days)
         print(i,args.date)
-        print(df.head(5))
         all_dfs.append(df)
     combined_df = pd.concat(all_dfs, ignore_index=True)
     combined_df =  combined_df.sort_values(by='datetime', ascending=True,inplace=False)
+    combined_df['datetime'] = pd.to_datetime(combined_df['datetime']).dt.tz_localize(None)
+    print(combined_df.head(5))
+    print(combined_df.tail(5))
     combined_df.to_csv(f'{args.contract_symbol}_{args.size}_per_{interval}.csv', mode='w', index=False)
     combined_df.to_pickle(f'{args.contract_symbol}_{args.size}_per_{interval}.pkl')    
 

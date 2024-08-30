@@ -1,0 +1,5 @@
+setup.py
+plotH.egg-info/PKG-INFO
+plotH.egg-info/SOURCES.txt
+plotH.egg-info/dependency_links.txt
+plotH.egg-info/top_level.txt

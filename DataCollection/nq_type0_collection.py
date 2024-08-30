@@ -7,8 +7,10 @@ import datetime
 from datetime import timedelta
 import pandas as pd
 from tqdm import tqdm
-
+from config import parse_args
 from utils import HistoricalDataCollector
+data_base='/Users/wentianwang/Library/CloudStorage/GoogleDrive-littlenova223@gmail.com/My Drive/quantum_t_data'
+
 
 def NQ_CQG_read(file_path):
     df=pd.read_csv(file_path,header=None, names=['date','time','open','high','low','close','volume'],dtype={'date':object,'time':object})
@@ -66,15 +68,16 @@ def NQ_CQG_read_all():
         df_set[i]=NQ_CQG_read(file)
     return df_set
 
+
 def NQ_CQG_read_fromDate(end_date,num_days):#
-    start_date=end_date-timedelta(days=num_days)
+    start_date=end_date-timedelta(days=num_days+1)
     y,s=NQ_future_select(end_date)
     end_index=NQ_future_ystoi(y,s)
     y,s=NQ_future_select(start_date)
     start_index=NQ_future_ystoi(y,s)
 
     data_path_prefix="/Users/wentianwang/Library/CloudStorage/GoogleDrive-littlenova223@gmail.com/My Drive/quantum_t_data"
-    data_path=data_path_prefix+"/raw/NQ_historic/Individual/NQ/"
+    data_path=data_path_prefix+"/raw/NQ_historic/Individual/NQ_EDT/"
     df_set={}
 
     for i in tqdm(range(start_index,end_index+1)):
@@ -83,10 +86,18 @@ def NQ_CQG_read_fromDate(end_date,num_days):#
         df_set[i]=NQ_CQG_read(file)
     return df_set
 
-def pick_1day_from_NQset(df_set,date):
-    y,s=NQ_future_select(date)
-    index=NQ_future_ystoi(y,s)
-    return df_set[index].loc[df_set[index].datetime.apply(lambda x: True if x.date()==date.date() else False)]
+def pick_1day_from_NQset(df_set, date):
+    y, s = NQ_future_select(date)
+    index = NQ_future_ystoi(y, s)
+    
+    # Define the start and end times
+    start_datetime = datetime.datetime(date.year, date.month, date.day, 19) - timedelta(days=1)  # 前一天的19:00
+    end_datetime = datetime.datetime(date.year, date.month, date.day, 18, 59)  # 当天的18:59
+    
+    # Select the relevant data from the DataFrame
+    df_selected = df_set[index].loc[df_set[index]['datetime'].between(start_datetime, end_datetime)]
+    
+    return df_selected
 
 def readNQ_xday_from_CQG(end_date_str,num_days):
     end_date=datetime.datetime.strptime(end_date_str,'%Y%m%d')
@@ -100,28 +111,45 @@ def readNQ_xday_from_CQG(end_date_str,num_days):
         if df is not None:
             dfs.append(df)
     combined_df = pd.concat(dfs, ignore_index=True).drop_duplicates(subset='datetime', keep='first')
-    combined_df.sort_values(by='datetime', inplace=True, ascending=False)
+    combined_df.sort_values(by='datetime', inplace=True, ascending=True)
+    return combined_df
+#————————————————————————————————The above are the methods to collect the data from CQG's database——————————————————————
+#————————————————————————————————The below are the methods to collect the data from Our database————————————————————————
+def NQ_DB_read_fromDate(end_date,num_days):
+    start_date=end_date-timedelta(days=num_days+1)
+    y,s=NQ_future_select(end_date)
+    end_index=NQ_future_ystoi(y,s)
+    y,s=NQ_future_select(start_date)
+    start_index=NQ_future_ystoi(y,s)
+
+    data_path_prefix="/Users/wentianwang/Library/CloudStorage/GoogleDrive-littlenova223@gmail.com/My Drive/quantum_t_data"
+    data_path=data_path_prefix+"/raw/NQ_historic/Individual/NQ_EDT_IBDB/"
+    df_set={}
+
+    for i in tqdm(range(start_index,end_index+1)):
+        y,s = NQ_future_itoys(i)
+        file=data_path+NQ_CQG_filename_str(y,s)
+        df_set[i]=NQ_CQG_read(file)
+    return df_set
+
+def readNQ_xday_from_db(end_date_str,num_days):
+    end_date=datetime.datetime.strptime(end_date_str,'%Y%m%d')
+    df_set=NQ_DB_read_fromDate(end_date,num_days)
+    dfs=[]
+    print("Arrange the data")
+    for i in tqdm(range(num_days)):
+        index_date = end_date - timedelta(days=i)
+        df=pick_1day_from_NQset(df_set,index_date)
+        if df is not None:
+            dfs.append(df)
+    combined_df = pd.concat(dfs, ignore_index=True).drop_duplicates(subset='datetime', keep='first')
+    combined_df.sort_values(by='datetime', inplace=True, ascending=True)
     return combined_df
 
-#data_path_prefix="/Users/wentianwang/Library/CloudStorage/GoogleDrive-littlenova223@gmail.com/My Drive/quantum_t_data"
-#data_path=data_path_prefix+"/raw/NQ_historic/Individual/NQ/NQ1999U.txt"
-#df1=NQ_CQG_read(data_path)
-#df={1:df1,2:df2}
-#df_set=NQ_CQG_read_all()
-#print(df_set[1].head(5))
+    data_path_prefix="/Users/wentianwang/Library/CloudStorage/GoogleDrive-littlenova223@gmail.com/My Drive/quantum_t_data"
+    data_path=data_path_prefix+"/raw/NQ_historic/Individual/NQ_EDT/"
 
-#print(NQ_CQG_filename_str(1998,2))
-#dt=datetime.datetime.strptime('19991022','%Y%m%d')
-#print(dt.date())
-#print(NQ_CQG_read_fromDate(dt,0))
-df=readNQ_xday_from_CQG('20240501',130)
-print(df.head())
-df.to_pickle('./tempdata/NQ2024.pkl')
-#df=readNQ_xday_from_CQG('20000101',180)
-#print(df.head())
-#df.to_pickle('./tempdata/NQ1999.pkl')
-#for i in range(2024,2025):
-#    st1=str(i)+'0101'
-#    df=readNQ_xday_from_CQG(st1,366)
-#    st2='./tempdata/NQ'+str(i-1)+'.pkl'
-#    df.to_pickle(st2)
+#————————————————————————————————The above are the methods to collect the data from Our database——————————————————————
+#————————————————————————————————The below are the methods to collect the data from IB's database——————————————————————
+df=readNQ_xday_from_CQG('20240430',8780)
+df.to_pickle(data_base+'/Type0/NQ/NQ_BASE.pkl')

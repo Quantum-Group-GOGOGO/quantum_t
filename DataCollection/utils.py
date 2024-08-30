@@ -33,7 +33,7 @@ class HistoricalDataCollector:
         if not self.is_weekend(date_str):  # Ensure it's not a weekend before requesting data
             date = datetime.strptime(date_str, '%Y%m%d').date()
             # Adjust the format of endDateTime to include spaces between date, time, and timezone (assuming local timezone)
-            formatted_end_date = f'{date.strftime("%Y%m%d")} {date.strftime("%H:%M:%S")} US/Eastern'
+            formatted_end_date = f'{date.strftime("%Y%m%d")} {date.strftime("%H:%M:%S")}'
             contract = self._create_contract()
             bars = self.IBobject.reqHistoricalData(
                 contract=contract,
