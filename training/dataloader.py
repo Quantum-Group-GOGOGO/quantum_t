@@ -49,20 +49,24 @@ if __name__ == "__main__":
     # 定义时间序列长度
     sequence_length = 300  # 前300个点，加上当前点一共301个点
     close_10_length = 100  # 每10个点取一个，取100个点
-    close_100_length = 100  # 每100个点取一个，取100个点
+    close_60_length = 60  # 每60个点取一个，取60个点
+    close_240_length = 240
+    close_1380_length = 1380
     print('hello2')
     
     # 创建 Dataset 和 DataLoader
     other_features = [col for col in df.columns if col != 'close']
     other_data = df[other_features].values
     print('hello3')
-    dataset = TimeSeriesDataset(close, other_data, sequence_length, close_10_length, close_100_length)
+    dataset = TimeSeriesDataset(close, other_data, sequence_length, close_10_length, close_60_length, close_240_length, close_1380_length)
     dataloader = DataLoader(dataset, batch_size=64, shuffle=True, num_workers=0)
     print('hello4')
     
     # 查看一个样本
-    sample_close_1, sample_close_10, sample_close_100, sample_other = next(iter(dataloader))
+    sample_close_1, sample_close_10, sample_close_60, close_1380_length, close_1380_length sample_other = next(iter(dataloader))
     print("Close_1 Sequence:", sample_close_1.shape)
     print("Close_10 Sequence:", sample_close_10.shape)
-    print("Close_100 Sequence:", sample_close_100.shape)
+    print("Close_60 Sequence:", sample_close_60.shape)
+    print("Close_240 Sequence:", sample_close_240.shape)
+    print("Close_2380 Sequence:", sample_close_1380.shape)
     print("Other Data:", sample_other.shape)

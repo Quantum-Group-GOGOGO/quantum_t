@@ -47,7 +47,7 @@ def main():
         args.secType = "FUT"
         args.exchange = "CME"
         args.currency = "USD"
-        args.lastTradeDateOrContractMonth = "202406"  
+        args.lastTradeDateOrContractMonth = "202409"  
     else:
         args.secType = "IND"
         args.exchange = "SMART"
@@ -86,8 +86,8 @@ def main():
     combined_df['datetime'] = pd.to_datetime(combined_df['datetime']).dt.tz_localize(None)
     print(combined_df.head(5))
     print(combined_df.tail(5))
-    combined_df.to_csv(f'{args.contract_symbol}_{args.size}_per_{interval}.csv', mode='w', index=False)
-    combined_df.to_pickle(f'{args.contract_symbol}_{args.size}_per_{interval}.pkl')    
+    combined_df.to_csv(f'Prepared.csv', mode='w', index=False)
+    combined_df.to_pickle(f'Prepared.pkl')    
 
 if __name__ == '__main__':
     main()

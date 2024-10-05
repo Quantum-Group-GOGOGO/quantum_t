@@ -3,15 +3,66 @@ import numpy as np
 from tqdm import tqdm
 
 data_base='/Users/wentianwang/Library/CloudStorage/GoogleDrive-littlenova223@gmail.com/My Drive/quantum_t_data'
-T4_data_path=data_base+'/type4/Nasdaq_qqq_align_labeled_base_evaluated_300.pkl'
+T4_data_path=data_base+'/type4/Nasdaq_qqq_align_labeled_base_evaluated.pkl'
 
-T5_data_path=data_base+'/type5/Nasdaq_qqq_align_labeled_base_evaluated_300_001.pkl'
-T5_data_path_test=data_base+'/type5/Nasdaq_qqq_align_labeled_base_evaluated_300_001_test.pkl'
+T5_data_path=data_base+'/type5/Nasdaq_qqq_align_labeled_base_evaluated.pkl'
+T5_data_path_test=data_base+'/type5/Nasdaq_qqq_align_labeled_base_evaluated_test.pkl'
 
 df=pd.read_pickle(T4_data_path)
-# 丢弃 'datetime' 列
-df = df.drop(columns=['datetime'], errors='ignore')
-# 小型切片用于测试
+#df=df.iloc[0:20000]
+# 每周有 7 天，每天占 1/7
+seconds_in_week = 7 * 24 * 60 * 60  # 每周的总秒数
 
+# 定义一个函数来计算 week_fraction
+def calculate_week_fraction(dt):
+    # 一周中的第几天（周一是 0，周日是 6）
+    day_of_week = dt.weekday()  # 0 到 6
+    
+    # 当天已经经过的秒数
+    seconds_in_day = dt.hour * 3600 + dt.minute * 60 + dt.second
+    
+    # 计算该时刻在本周中的秒数
+    seconds_in_week_at_this_time = day_of_week * 24 * 3600 + seconds_in_day
+    
+    # 计算该时刻占一周的比例
+    return seconds_in_week_at_this_time / seconds_in_week
+
+df['week_fraction'] = df['datetime'].apply(calculate_week_fraction)
+
+#计算sin和cos的值
+# 计算 week_fraction_sin 和 week_fraction_cos
+df['week_fraction_sin'] = 0.5*(np.sin(df['week_fraction'] * 2 * np.pi)+1)
+df['week_fraction_cos'] = 0.5*(np.cos(df['week_fraction'] * 2 * np.pi)+1)
+
+#把SinT和CosT也投射到0到1
+df['sinT']=0.5*(df['sinT']+1)
+df['cosT']=0.5*(df['cosT']+1)
+
+#计算从2000年1月1日到现在的分钟数
+# 定义基准时间 2000年1月1日00:00
+reference_time = pd.Timestamp('2000-01-01 00:00:00')
+
+# 计算每个时间点距离 2000 年 1 月 1 日 00:00 的分钟数
+df['absolute_time'] = (df['datetime'] - reference_time).dt.total_seconds() / 60
+
+#加权平均volume
+df['volume_10'] = df['volume'].rolling(window=10, min_periods=1).mean()
+df['volume_60'] = df['volume'].rolling(window=60, min_periods=1).mean()
+df['volume_240'] = df['volume'].rolling(window=240, min_periods=1).mean()
+df['volume_1380'] = df['volume'].rolling(window=1830, min_periods=1).mean()
+#df['volume_YEAR'] = df['volume'].rolling(window=347760, min_periods=1).mean()
+
+#加权平均close
+df['close_10'] = df['close'].rolling(window=10, min_periods=1).mean()
+df['close_60'] = df['close'].rolling(window=60, min_periods=1).mean()
+df['close_240'] = df['close'].rolling(window=240, min_periods=1).mean()
+df['close_1380'] = df['close'].rolling(window=1830, min_periods=1).mean()
+#df['close_YEAR'] = df['close'].rolling(window=347760, min_periods=1).mean()
+
+
+# 丢弃 'datetime' 列
+df = df.drop(columns=['datetime','open','high','low'], errors='ignore')
+# 小型切片用于测试
+print(df.head())
 df.to_pickle(T5_data_path)
 df.iloc[0:20000].to_pickle(T5_data_path_test)
