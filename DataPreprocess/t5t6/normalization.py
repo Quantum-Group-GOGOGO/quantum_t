@@ -64,7 +64,7 @@ def logi_rescale(df, column_name, scaling_factor=1):
 
     return df
 
-data_base='/Users/wentianwang/Library/CloudStorage/GoogleDrive-littlenova223@gmail.com/My Drive/quantum_t_data'
+#data_base='/Users/wentianwang/Library/CloudStorage/GoogleDrive-littlenova223@gmail.com/My Drive/quantum_t_data'
 
 T5_data_path=data_base+'/type5/Nasdaq_qqq_align_labeled_base_evaluated.pkl'
 T5_data_path_test=data_base+'/type5/Nasdaq_qqq_align_labeled_base_evaluated_test.pkl'
