@@ -41,6 +41,8 @@ class TimeSeriesLSTM(nn.Module):
 
 if __name__ == "__main__":
     # 假设你已经有一个加载好的 DataFrame 'df'
+    #data_base='D:\quantum\quantum_t_data\quantum_t_data'
+
     data_base = '/Users/wentianwang/Library/CloudStorage/GoogleDrive-littlenova223@gmail.com/My Drive/quantum_t_data'
     T6_data_path = data_base + '/type6/Nasdaq_qqq_align_labeled_base_evaluated_normST1.pkl'
 
