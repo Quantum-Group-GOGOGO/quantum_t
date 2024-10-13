@@ -64,32 +64,36 @@ def logi_rescale(df, column_name, scaling_factor=1):
 
     return df
 
-#data_base='/Users/wentianwang/Library/CloudStorage/GoogleDrive-littlenova223@gmail.com/My Drive/quantum_t_data'
+data_base='/Users/wentianwang/Library/CloudStorage/GoogleDrive-littlenova223@gmail.com/My Drive/quantum_t_data'
 
 T5_data_path=data_base+'/type5/Nasdaq_qqq_align_labeled_base_evaluated.pkl'
 T5_data_path_test=data_base+'/type5/Nasdaq_qqq_align_labeled_base_evaluated_test.pkl'
 
-T6_data_path_test=data_base+'/type6/Nasdaq_qqq_align_labeled_base_evaluated_normST1_test.pkl'
+T6_data_path=data_base+'/type6/Nasdaq_qqq_align_labeled_base_evaluated_normST1.pkl'
 
 df=pd.read_pickle(T5_data_path)
-print(df.head())
+print(df['volume'].head())
 print(df.columns)
 #print(df.describe())
 
 #指数归一化
+#sf越大，归一化越靠近1
+#sf越小，归一化越靠近0
 exp_norm(df, 'volume', scaling_factor=1e4)
 exp_norm(df, 'volume_10', scaling_factor=1e4)
 exp_norm(df, 'volume_60', scaling_factor=1e4)
 exp_norm(df, 'volume_240', scaling_factor=1e4)
-exp_norm(df, 'volume_1380', scaling_factor=1e3)
+exp_norm(df, 'volume_1380', scaling_factor=5e4)
 
-exp_norm(df, 'pre_event', scaling_factor=1e4)
-exp_norm(df, 'post_event', scaling_factor=1e4)
-exp_norm(df, 'pre_break', scaling_factor=1e5)
-exp_norm(df, 'post_break', scaling_factor=1e5)
-exp_norm(df, 'absolute_time', scaling_factor=1e6)
+exp_norm(df, 'pre_event', scaling_factor=1e5)
+exp_norm(df, 'post_event', scaling_factor=1e5)
+exp_norm(df, 'pre_break', scaling_factor=4e3)
+exp_norm(df, 'post_break', scaling_factor=4e3)
+exp_norm(df, 'absolute_time', scaling_factor=8e6)
 
 #logistic函数归一化
+#sf越大，归一化越靠中间
+#sf越小，归一化越分散
 logi_norm(df, 'evaluation_30', scaling_factor=1e0)
 logi_norm(df, 'evaluation_60', scaling_factor=2e0)
 logi_norm(df, 'evaluation_120', scaling_factor=4e0)
@@ -97,15 +101,23 @@ logi_norm(df, 'evaluation_300', scaling_factor=4e0)
 logi_norm(df, 'evaluation_480', scaling_factor=1e1)
 
 #重新调整数据分布
-logi_rescale(df, 'volume', scaling_factor=1e-1)
-logi_rescale(df, 'volume_10', scaling_factor=1e-1)
-logi_rescale(df, 'volume_60', scaling_factor=1e-1)
-logi_rescale(df, 'volume_240', scaling_factor=1e-1)
-# 生成报告
-profile = ProfileReport(df)
+#sf<1e0 越小越扩散到两头
+#sf>1e0 越大越集中到中间
+logi_rescale(df, 'volume', scaling_factor=2e0)
+logi_rescale(df, 'volume_10', scaling_factor=5e0)
+logi_rescale(df, 'volume_60', scaling_factor=6e0)
+logi_rescale(df, 'volume_240', scaling_factor=4e0)
+logi_rescale(df, 'volume_1380', scaling_factor=1e0)
 
-# 保存为 HTML 文件
-report_file = "report.html"
-profile.to_file(report_file)
+#视情况是否需要摒弃volume_YEAR
+df.drop('volume_YEAR', axis=1, inplace=True)
+#丢弃其它不需要的辅助数据
+df.drop('time_break_flag', axis=1, inplace=True)
+df.drop('event', axis=1, inplace=True)
+df.drop('time_fraction', axis=1, inplace=True)
+df.drop('week_fraction', axis=1, inplace=True)
 
-#df.to_pickle(T6_data_path_test)
+pd.options.display.float_format = '{:.2e}'.format
+
+print(df['volume'].head())
+df.to_pickle(T6_data_path)

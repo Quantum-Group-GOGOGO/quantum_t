@@ -2,71 +2,81 @@ import pandas as pd
 import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader
-
+from scipy.special import expit  # 使用expit函数实现sigmoid
 
 # 创建一个自定义 Dataset 类
 class TimeSeriesDataset(Dataset):
-    def __init__(self, close, other_data, sequence_length, close_10_length, close_100_length):
-        self.close = close
-        self.other_data = other_data
-        self.sequence_length = sequence_length
-        self.close_10_length = close_10_length
-        self.close_100_length = close_100_length
+    def __init__(self, df, sequence_length_1, sequence_length_10, sequence_length_60, sequence_length_240, sequence_length_1380):
+        # 提取 'close' 等列
+        self.close = df['close'].values
+        self.close_10 = df['close_10'].values
+        self.close_60 = df['close_60'].values
+        self.close_240 = df['close_240'].values
+        self.close_1380 = df['close_1380'].values
+
+        # 提取 'volume' 等列
+        self.volume = df['volume'].values
+        self.volume_10 = df['volume_10'].values
+        self.volume_60 = df['volume_60'].values
+        self.volume_240 = df['volume_240'].values
+        self.volume_1380 = df['volume_1380'].values
+
+        # 提取其他数据
+        excluded_columns = ['close', 'close_10', 'close_60', 'close_240', 'close_1380', 'volume', 'volume_10', 'volume_60', 'volume_240', 'volume_1380', 'evaluation_30', 'evaluation_60', 'evaluation_120', 'evaluation_300', 'evaluation_480']
+        other_features = [col for col in df.columns if col not in excluded_columns]
+        self.other_data = df[other_features].values
+
+        # 提取评测数据
+        evaluation_columns = ['evaluation_30', 'evaluation_60', 'evaluation_120', 'evaluation_300', 'evaluation_480']
+        evaluation_index = [col for col in df.columns if col in evaluation_columns]
+        self.evaluation_data = df[evaluation_index].values
+
+        self.sequence_length_1 = sequence_length_1
+        self.sequence_length_10 = sequence_length_10
+        self.sequence_length_60 = sequence_length_60
+        self.sequence_length_240 = sequence_length_240
+        self.sequence_length_1380 = sequence_length_1380
 
     def __len__(self):
-        return len(self.close) - self.sequence_length - (self.close_10_length - 1) * 10 - (self.close_100_length - 1) * 100
+        # 确保所有序列都足够长，至少满足最大跳度
+        return len(self.close) - self.sequence_length_1380 * 1380 - 1
 
     def __getitem__(self, idx):
-        # 提取 close_1 (前300个点加当前点)
-        close_1 = self.close[idx:idx + self.sequence_length + 1]
+        # 计算尾端索引为idx往后数 sequence_length_1380 * 1380 的位置
+        end_idx = idx + self.sequence_length_1380 * 1380
 
-        # 提取 close_10 (从当前开始，每10个点取1个，共100个点)
-        close_10 = self.close[idx:idx + self.close_10_length * 10:10]
+        # 根据尾端索引往前取对应长度，确保所有序列尾端对齐
+        close_1 = self.close[end_idx - self.sequence_length_1 + 1:end_idx + 1]
+        close_10 = self.close_10[end_idx - (self.sequence_length_10 - 1) * 10:end_idx + 1:10]
+        close_60 = self.close_60[end_idx - (self.sequence_length_60 - 1) * 60:end_idx + 1:60]
+        close_240 = self.close_240[end_idx - (self.sequence_length_240 - 1) * 240:end_idx + 1:240]
+        close_1380 = self.close_1380[end_idx - (self.sequence_length_1380 - 1) * 1380:end_idx + 1:1380]
 
-        # 提取 close_100 (从当前开始，每100个点取1个，共100个点)
-        close_100 = self.close[idx:idx + self.close_100_length * 100:100]
+        # 对时间序列进行归一化
+        close_1 = self.normalize_series(close_1)
+        close_10 = self.normalize_series(close_10)
+        close_60 = self.normalize_series(close_60)
+        close_240 = self.normalize_series(close_240)
+        close_1380 = self.normalize_series(close_1380)
 
-        # 提取协变量数据，只取当前点
-        other_data_current = self.other_data[idx + self.sequence_length]
+        # 根据尾端索引往前取对应长度，确保所有序列尾端对齐
+        volume_1 = self.volume[end_idx - self.sequence_length_1 + 1:end_idx + 1]
+        volume_10 = self.volume_10[end_idx - (self.sequence_length_10 - 1) * 10:end_idx + 1:10]
+        volume_60 = self.volume_60[end_idx - (self.sequence_length_60 - 1) * 60:end_idx + 1:60]
+        volume_240 = self.volume_240[end_idx - (self.sequence_length_240 - 1) * 240:end_idx + 1:240]
+        volume_1380 = self.volume_1380[end_idx - (self.sequence_length_1380 - 1) * 1380:end_idx + 1:1380]
 
-        return (close_1, close_10, close_100, other_data_current)
+        # 加载协变量
+        other_data_current = self.other_data[end_idx]
 
+        #加评测值
+        evaluation_data_current = self.evaluation_data[end_idx]
 
-# 将下面的代码放在 main 块中
-if __name__ == "__main__":
-    # 假设你已经有一个加载好的 DataFrame 'df'
-    data_base='/Users/wentianwang/Library/CloudStorage/GoogleDrive-littlenova223@gmail.com/My Drive/quantum_t_data'
-    T4_data_path=data_base+'/type5/Nasdaq_qqq_align_labeled_base_evaluated_300_001_test.pkl'
-    df = pd.read_pickle(T4_data_path)
+        return (close_1, close_10, close_60, close_240, close_1380, volume_1, volume_10, volume_60, volume_240, volume_1380, other_data_current, evaluation_data_current)
     
-    # 丢弃 'datetime' 列
-    #df = df.drop(columns=['datetime'], errors='ignore')
-    
-    # 提取 'close' 列
-    close = df['close'].values
-    print('hello1')
-    
-    # 定义时间序列长度
-    sequence_length = 300  # 前300个点，加上当前点一共301个点
-    close_10_length = 100  # 每10个点取一个，取100个点
-    close_60_length = 60  # 每60个点取一个，取60个点
-    close_240_length = 240
-    close_1380_length = 1380
-    print('hello2')
-    
-    # 创建 Dataset 和 DataLoader
-    other_features = [col for col in df.columns if col != 'close']
-    other_data = df[other_features].values
-    print('hello3')
-    dataset = TimeSeriesDataset(close, other_data, sequence_length, close_10_length, close_60_length, close_240_length, close_1380_length)
-    dataloader = DataLoader(dataset, batch_size=64, shuffle=True, num_workers=0)
-    print('hello4')
-    
-    # 查看一个样本
-    sample_close_1, sample_close_10, sample_close_60, close_1380_length, close_1380_length sample_other = next(iter(dataloader))
-    print("Close_1 Sequence:", sample_close_1.shape)
-    print("Close_10 Sequence:", sample_close_10.shape)
-    print("Close_60 Sequence:", sample_close_60.shape)
-    print("Close_240 Sequence:", sample_close_240.shape)
-    print("Close_2380 Sequence:", sample_close_1380.shape)
-    print("Other Data:", sample_other.shape)
+    def normalize_series(self, series):
+        # 使用最后一个点作为基准进行归一化
+        last_value = series[-1]
+        normalized_series = expit(25*(series - last_value)/last_value)  # 使用sigmoid函数归一化 4%变化对应sigmoid(1) 所以乘25倍
+        return normalized_series
+

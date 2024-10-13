@@ -1,0 +1,10 @@
+变量一览
+
+时间序列 10
+close close_10 close_60 close_240 close_1380 volume volume_10 volume_60 volume_240 volume_1380
+
+协变量 9
+sinT cosT pre_event post_event pre_break post_break week_fraction_sin week_fraction_cos absolute_time 
+
+预测指标 5
+evaluation_30 evaluation_60 evaluation_120 evaluation_300 evaluation_480
