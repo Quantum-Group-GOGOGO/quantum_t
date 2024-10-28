@@ -6,11 +6,13 @@ from dataloader_LSTM1 import TimeSeriesLSTM1Dataset
 from torch.utils.data import DataLoader
 import pandas as pd
 from tqdm import tqdm
+import random
 
 # 将下面的代码放在 main 块中
 if __name__ == "__main__":
     # 假设你已经有一个加载好的 DataFrame 'df'
-    data_base = '/Users/wentianwang/Library/CloudStorage/GoogleDrive-littlenova223@gmail.com/My Drive/quantum_t_data'
+    #data_base = '/Users/wentianwang/Library/CloudStorage/GoogleDrive-littlenova223@gmail.com/My Drive/quantum_t_data'
+    data_base = 'D:/quantum/quantum_t_data/quantum_t_data'
     # 读取训练集和测试集
     train_path = data_base + '/type6/Nasdaq_qqq_align_labeled_base_evaluated_normST1_train.pkl'
     test_path = data_base + '/type6/Nasdaq_qqq_align_labeled_base_evaluated_normST1_test.pkl'
@@ -30,6 +32,11 @@ if __name__ == "__main__":
 
     dataloader = DataLoader(dataset, batch_size=64, shuffle=True, num_workers=0)
 
+    # 创建测试集的 Dataset 和 DataLoader
+    test_df = pd.read_pickle(test_path)
+    test_dataset = TimeSeriesLSTM1Dataset(test_df, sequence_length_1, sequence_length_10,
+                                        sequence_length_60, sequence_length_240, sequence_length_1380)
+    test_dataloader = DataLoader(test_dataset, batch_size=64, shuffle=True, num_workers=0)
     # 查看一个样本
     #sample_close_1, sample_volume_1 = next(iter(dataloader))
     #print("Close_1 Sequence:", sample_close_1.shape)
@@ -44,10 +51,10 @@ if __name__ == "__main__":
 
     # 超参数
     input_size = 2  # 每个时间步的特征数量（两个变量：Close_1 和 Volume_1）
-    hidden_size = 50
+    hidden_size = 60
     num_layers = 2
-    encoded_size = 10
-    num_epochs = 5
+    encoded_size = 40
+    num_epochs = 10
     learning_rate = 0.001
 
     # 实例化模型
@@ -89,14 +96,13 @@ if __name__ == "__main__":
         print(f'Epoch [{epoch+1}/{num_epochs}], Average Train Loss: {avg_loss:.8f}')
 
         # 评估模型在测试集上的表现
-        model.eval()  # 切换到评估模式
+        # model.eval()  # 切换到评估模式
         with torch.no_grad():
-            # 从测试集中随机选择一个样本
-            random_index = random.randint(0, len(test_dataset) - 1)
-            sample_close_1, sample_volume_1 = test_dataset[random_index]
+            # 从测试集中获取一个样本
+            sample_close_1, sample_volume_1 = next(iter(test_dataloader))
 
             # 合并输入特征（close 和 volume）
-            x_test = torch.cat((sample_close_1.unsqueeze(-1), sample_volume_1.unsqueeze(-1)), dim=1).unsqueeze(0).float()  # 添加 batch 维度
+            x_test = torch.cat((sample_close_1.unsqueeze(-1), sample_volume_1.unsqueeze(-1)), dim=2).float()  # 添加 batch 维度
 
             # 前向传播
             reconstructed_output = model(x_test)
@@ -105,7 +111,7 @@ if __name__ == "__main__":
             test_loss = criterion(reconstructed_output, x_test)
             print(f'Epoch [{epoch+1}/{num_epochs}], Test Loss (Random Sample): {test_loss:.8f}')
 
-    # 保存模型
-    model_path = data_base + '/models/lstm1_encoder/LSTMAutoencoder_trained.pth'
-    torch.save(model.state_dict(), model_path)
-    print(f"模型已保存到: {model_path}")
+        # 保存模型
+        model_path = data_base + '/models/lstm1_encoder/LSTMAutoencoder_trained2.pth'
+        torch.save(model.state_dict(), model_path)
+        print(f"模型已保存到: {model_path}")

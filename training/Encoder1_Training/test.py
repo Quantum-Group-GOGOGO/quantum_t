@@ -6,7 +6,8 @@ from dataloader_LSTM1 import TimeSeriesLSTM1Dataset
 from torch.utils.data import DataLoader
 
 # 读取测试集数据
-data_base = '/Users/wentianwang/Library/CloudStorage/GoogleDrive-littlenova223@gmail.com/My Drive/quantum_t_data'
+#data_base = '/Users/wentianwang/Library/CloudStorage/GoogleDrive-littlenova223@gmail.com/My Drive/quantum_t_data'
+data_base = 'D:/quantum/quantum_t_data/quantum_t_data'
 test_path = data_base + '/type6/Nasdaq_qqq_align_labeled_base_evaluated_normST1_test.pkl'
 
 # 定义时间序列长度
@@ -26,7 +27,7 @@ test_dataloader = DataLoader(test_dataset, batch_size=1, shuffle=True, num_worke
 input_size = 2  # 每个时间步的特征数量（两个变量：Close_1 和 Volume_1）
 hidden_size = 50
 num_layers = 2
-encoded_size = 10
+encoded_size = 20
 
 # 实例化模型
 model = LSTMAutoencoder(input_size, hidden_size, num_layers, encoded_size)

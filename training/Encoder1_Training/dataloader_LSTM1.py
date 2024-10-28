@@ -40,6 +40,7 @@ class TimeSeriesLSTM1Dataset(Dataset):
     def __len__(self):
         # 确保所有序列都足够长，至少满足最大跳度
         return len(self.close) - self.sequence_length_1380 * 1380 - 1
+        #return 1000
 
     def __getitem__(self, idx):
         # 计算尾端索引为idx往后数 sequence_length_1380 * 1380 的位置
