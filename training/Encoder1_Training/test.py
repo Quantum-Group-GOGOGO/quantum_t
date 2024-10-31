@@ -25,15 +25,15 @@ test_dataloader = DataLoader(test_dataset, batch_size=1, shuffle=True, num_worke
 
 # 定义模型参数
 input_size = 2  # 每个时间步的特征数量（两个变量：Close_1 和 Volume_1）
-hidden_size = 50
+hidden_size = 60
 num_layers = 2
-encoded_size = 20
+encoded_size = 40
 
 # 实例化模型
 model = LSTMAutoencoder(input_size, hidden_size, num_layers, encoded_size)
 
 # 加载训练好的模型参数
-model_path = data_base + '/models/lstm1_encoder/LSTMAutoencoder_trained.pth'
+model_path = data_base + '/models/lstm1_encoder/LSTMAutoencoder_trained2.pth'
 model.load_state_dict(torch.load(model_path))
 model.eval()  # 切换到评估模式
 

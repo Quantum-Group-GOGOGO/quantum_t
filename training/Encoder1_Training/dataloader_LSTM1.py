@@ -54,7 +54,7 @@ class TimeSeriesLSTM1Dataset(Dataset):
         close_1380 = self.close_1380[end_idx - (self.sequence_length_1380 - 1) * 1380:end_idx + 1:1380]
 
         # 对时间序列进行归一化
-        close_1 = self.normalize_series(close_1)
+        close_1 = self.normalize_series1(close_1)
         close_10 = self.normalize_series(close_10)
         close_60 = self.normalize_series(close_60)
         close_240 = self.normalize_series(close_240)
@@ -81,3 +81,8 @@ class TimeSeriesLSTM1Dataset(Dataset):
         normalized_series = expit(25*(series - last_value)/last_value)  # 使用sigmoid函数归一化 4%变化对应sigmoid(1) 所以乘25倍
         return normalized_series
 
+    def normalize_series1(self, series):
+        # 使用最后一个点作为基准进行归一化
+        last_value = series[-1]
+        normalized_series = expit(100*(series - last_value)/last_value)  # 使用sigmoid函数归一化 4%变化对应sigmoid(1) 所以乘25倍
+        return normalized_series

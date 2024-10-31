@@ -1,4 +1,5 @@
 from LSTM1 import LSTMAutoencoder
+from LSTM1_loss import WeightedMSELoss
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -60,8 +61,8 @@ if __name__ == "__main__":
     # 实例化模型
     model = LSTMAutoencoder(input_size, hidden_size, num_layers, encoded_size)
 
-    # 损失函数和优化器
-    criterion = nn.MSELoss()
+    # 损失函数和优化器(WeightedMSELoss是自定义损失函数类)
+    criterion = WeightedMSELoss(close_weight=1.0, volume_weight=0.5)
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
     for epoch in range(num_epochs):
@@ -96,7 +97,7 @@ if __name__ == "__main__":
         print(f'Epoch [{epoch+1}/{num_epochs}], Average Train Loss: {avg_loss:.8f}')
 
         # 评估模型在测试集上的表现
-        # model.eval()  # 切换到评估模式
+        model.eval()  # 切换到评估模式
         with torch.no_grad():
             # 从测试集中获取一个样本
             sample_close_1, sample_volume_1 = next(iter(test_dataloader))
