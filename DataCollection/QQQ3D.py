@@ -47,7 +47,7 @@ def main():
         args.secType = "FUT"
         args.exchange = "CME"
         args.currency = "USD"
-        args.lastTradeDateOrContractMonth = "202409"  
+        args.lastTradeDateOrContractMonth = "202503"  
     else:
         args.secType = "IND"
         args.exchange = "SMART"

@@ -5,7 +5,7 @@ from torch.utils.data import Dataset, DataLoader
 from scipy.special import expit  # 使用expit函数实现sigmoid
 
 # 创建一个自定义 Dataset 类
-class TimeSeriesLSTM1Dataset(Dataset):
+class TimeSeriesLSTM10Dataset(Dataset):
     def __init__(self, df, sequence_length_1, sequence_length_10, sequence_length_60, sequence_length_240, sequence_length_1380):
         # 提取 'close' 等列并转换为 float32
         self.close = df['close'].values.astype(np.float32)
@@ -73,7 +73,7 @@ class TimeSeriesLSTM1Dataset(Dataset):
         #加评测值
         evaluation_data_current = self.evaluation_data[end_idx]
 
-        return (close_1, volume_1)
+        return (close_10, volume_10)
     
     def normalize_series(self, series):
         # 使用最后一个点作为基准进行归一化

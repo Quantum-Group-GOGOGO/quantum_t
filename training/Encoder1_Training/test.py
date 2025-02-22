@@ -40,10 +40,10 @@ model.eval()  # 切换到评估模式
 # 获取一个测试样本并进行重构
 with torch.no_grad():
     # 从测试集中获取一个样本
-    sample_close_1, sample_volume_1 = next(iter(test_dataloader))
+    sample_close_10, sample_volume_10 = next(iter(test_dataloader))
 
     # 合并输入特征（close 和 volume）
-    x_sample = torch.cat((sample_close_1.unsqueeze(-1), sample_volume_1.unsqueeze(-1)), dim=2).float()  # (1, sequence_length, input_size)
+    x_sample = torch.cat((sample_close_10.unsqueeze(-1), sample_volume_10.unsqueeze(-1)), dim=2).float()  # (1, sequence_length, input_size)
 
     # 通过模型进行前向传播，得到重构的输出
     reconstructed_output = model(x_sample)
@@ -57,11 +57,11 @@ with torch.no_grad():
 
     # 绘制 Close_1 原始和重构序列的曲线
     plt.subplot(2, 1, 1)
-    plt.plot(original_sequence[:, 0], label='Original Close_1', color='blue')
-    plt.plot(reconstructed_sequence[:, 0], label='Reconstructed Close_1', color='red', linestyle='--')
+    plt.plot(original_sequence[:, 0], label='Original Close_10', color='blue')
+    plt.plot(reconstructed_sequence[:, 0], label='Reconstructed Close_10', color='red', linestyle='--')
     plt.xlabel('Time Step')
-    plt.ylabel('Close_1 Value')
-    plt.title('Original vs Reconstructed Close_1')
+    plt.ylabel('Close_10 Value')
+    plt.title('Original vs Reconstructed Close_10')
     plt.legend()
 
     # 绘制 Volume_1 原始和重构序列的曲线
@@ -69,8 +69,8 @@ with torch.no_grad():
     plt.plot(original_sequence[:, 1], label='Original Volume_1', color='blue')
     plt.plot(reconstructed_sequence[:, 1], label='Reconstructed Volume_1', color='red', linestyle='--')
     plt.xlabel('Time Step')
-    plt.ylabel('Volume_1 Value')
-    plt.title('Original vs Reconstructed Volume_1')
+    plt.ylabel('Volume_10 Value')
+    plt.title('Original vs Reconstructed Volume_10')
     plt.legend()
 
     # 显示图像
