@@ -5,7 +5,7 @@ from torch.utils.data import Dataset, DataLoader
 from scipy.special import expit  # 使用expit函数实现sigmoid
 
 # 创建一个自定义 Dataset 类
-class TimeSeriesLSTM10Dataset(Dataset):
+class TimeSeriesLSTMTSDataset(Dataset):
     def __init__(self, df, sequence_length_1, sequence_length_10, sequence_length_60, sequence_length_240, sequence_length_1380):
         # 提取 'close' 等列并转换为 float32
         self.close = df['close'].values.astype(np.float32)
@@ -56,9 +56,9 @@ class TimeSeriesLSTM10Dataset(Dataset):
         # 对时间序列进行归一化
         close_1 = self.normalize_series1(close_1)
         close_10 = self.normalize_series10(close_10)
-        close_60 = self.normalize_series(close_60)
-        close_240 = self.normalize_series(close_240)
-        close_1380 = self.normalize_series(close_1380)
+        close_60 = self.normalize_series60(close_60)
+        close_240 = self.normalize_series240(close_240)
+        close_1380 = self.normalize_series1380(close_1380)
 
         # 根据尾端索引往前取对应长度，确保所有序列尾端对齐
         volume_1 = self.volume[end_idx - self.sequence_length_1 + 1:end_idx + 1]
@@ -73,7 +73,8 @@ class TimeSeriesLSTM10Dataset(Dataset):
         #加评测值
         evaluation_data_current = self.evaluation_data[end_idx]
 
-        return (close_10, volume_10)
+        return (close_1, close_10, close_60, close_240, close_1380,
+                volume_1, volume_10, volume_60, volume_240, volume_1380, evaluation_data_current)
     
     def normalize_series(self, series):
         # 使用最后一个点作为基准进行归一化
@@ -91,4 +92,22 @@ class TimeSeriesLSTM10Dataset(Dataset):
         # 使用最后一个点作为基准进行归一化
         last_value = series[-1]
         normalized_series = expit(100*(series - last_value)/last_value)  # 使用sigmoid函数归一化 1%变化对应sigmoid(1) 所以乘100倍
+        return normalized_series
+    
+    def normalize_series60(self, series):
+        # 使用最后一个点作为基准进行归一化
+        last_value = series[-1]
+        normalized_series = expit(25*(series - last_value)/last_value)  # 使用sigmoid函数归一化 1%变化对应sigmoid(1) 所以乘100倍
+        return normalized_series
+    
+    def normalize_series240(self, series):
+        # 使用最后一个点作为基准进行归一化
+        last_value = series[-1]
+        normalized_series = expit(25*(series - last_value)/last_value)  # 使用sigmoid函数归一化 1%变化对应sigmoid(1) 所以乘100倍
+        return normalized_series
+    
+    def normalize_series1380(self, series):
+        # 使用最后一个点作为基准进行归一化
+        last_value = series[-1]
+        normalized_series = expit(25*(series - last_value)/last_value)  # 使用sigmoid函数归一化 1%变化对应sigmoid(1) 所以乘100倍
         return normalized_series

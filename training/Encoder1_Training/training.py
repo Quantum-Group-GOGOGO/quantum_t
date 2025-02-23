@@ -12,8 +12,8 @@ import random
 # 将下面的代码放在 main 块中
 if __name__ == "__main__":
     # 假设你已经有一个加载好的 DataFrame 'df'
-    #data_base = '/Users/wentianwang/Library/CloudStorage/GoogleDrive-littlenova223@gmail.com/My Drive/quantum_t_data'
-    data_base = 'D:/quantum/quantum_t_data/quantum_t_data'
+    data_base = '/Users/wentianwang/Library/CloudStorage/GoogleDrive-littlenova223@gmail.com/My Drive/quantum_t_data'
+    #data_base = 'D:/quantum/quantum_t_data/quantum_t_data'
     # 读取训练集和测试集
     train_path = data_base + '/type6/Nasdaq_qqq_align_labeled_base_evaluated_normST1_train.pkl'
     test_path = data_base + '/type6/Nasdaq_qqq_align_labeled_base_evaluated_normST1_test.pkl'
@@ -59,7 +59,9 @@ if __name__ == "__main__":
     learning_rate = 0.001
 
     # 实例化模型
-    model = LSTMAutoencoder(input_size, hidden_size, num_layers, encoded_size)
+    #model = LSTMAutoencoder(input_size, hidden_size, num_layers, encoded_size)
+    model = LSTMAutoencoder(input_size=2, hidden_size=60, num_layers=2, encoded_size=40, num_heads=4, transformer_layers=2)
+
 
     # 损失函数和优化器(WeightedMSELoss是自定义损失函数类)
     criterion = WeightedMSELoss(close_weight=1.0, volume_weight=0.5)

@@ -2,24 +2,24 @@ from LSTM1 import LSTMAutoencoder
 import torch
 import pandas as pd
 import matplotlib.pyplot as plt
-from dataloader_LSTM1 import TimeSeriesLSTM1Dataset
+from dataloader_LSTMTS import TimeSeriesLSTMTSDataset
 from torch.utils.data import DataLoader
 
 # 读取测试集数据
-#data_base = '/Users/wentianwang/Library/CloudStorage/GoogleDrive-littlenova223@gmail.com/My Drive/quantum_t_data'
-data_base = 'D:/quantum/quantum_t_data/quantum_t_data'
+data_base = '/Users/wentianwang/Library/CloudStorage/GoogleDrive-littlenova223@gmail.com/My Drive/quantum_t_data'
+#data_base = 'D:/quantum/quantum_t_data/quantum_t_data'
 test_path = data_base + '/type6/Nasdaq_qqq_align_labeled_base_evaluated_normST1_test.pkl'
 
 # 定义时间序列长度
 sequence_length_1 = 120
-sequence_length_10 = 100
-sequence_length_60 = 60
-sequence_length_240 = 60
-sequence_length_1380 = 60
+sequence_length_10 = 120
+sequence_length_60 = 120
+sequence_length_240 = 120
+sequence_length_1380 = 120
 
 # 创建测试集的 Dataset 和 DataLoader
 test_df = pd.read_pickle(test_path)
-test_dataset = TimeSeriesLSTM1Dataset(test_df, sequence_length_1, sequence_length_10,
+test_dataset = TimeSeriesLSTMTSDataset(test_df, sequence_length_1, sequence_length_10,
                                       sequence_length_60, sequence_length_240, sequence_length_1380)
 test_dataloader = DataLoader(test_dataset, batch_size=1, shuffle=True, num_workers=0)
 
@@ -40,10 +40,11 @@ model.eval()  # 切换到评估模式
 # 获取一个测试样本并进行重构
 with torch.no_grad():
     # 从测试集中获取一个样本
-    sample_close_10, sample_volume_10 = next(iter(test_dataloader))
+    (close_1, close_10, close_60, close_240, close_1380,
+     volume_1, volume_10, volume_60, volume_240, volume_1380, evaluation_data_current) = next(iter(test_dataloader))
 
     # 合并输入特征（close 和 volume）
-    x_sample = torch.cat((sample_close_10.unsqueeze(-1), sample_volume_10.unsqueeze(-1)), dim=2).float()  # (1, sequence_length, input_size)
+    x_sample = torch.cat((close_10.unsqueeze(-1), volume_10.unsqueeze(-1)), dim=2).float()  # (1, sequence_length, input_size)
 
     # 通过模型进行前向传播，得到重构的输出
     reconstructed_output = model(x_sample)
@@ -66,8 +67,8 @@ with torch.no_grad():
 
     # 绘制 Volume_1 原始和重构序列的曲线
     plt.subplot(2, 1, 2)
-    plt.plot(original_sequence[:, 1], label='Original Volume_1', color='blue')
-    plt.plot(reconstructed_sequence[:, 1], label='Reconstructed Volume_1', color='red', linestyle='--')
+    plt.plot(original_sequence[:, 1], label='Original Volume_10', color='blue')
+    plt.plot(reconstructed_sequence[:, 1], label='Reconstructed Volume_10', color='red', linestyle='--')
     plt.xlabel('Time Step')
     plt.ylabel('Volume_10 Value')
     plt.title('Original vs Reconstructed Volume_10')
