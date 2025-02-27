@@ -19,7 +19,7 @@ test_dataset = TimeSeriesLSTMTSDataset(test_df, sequence_length, sequence_length
 test_dataloader = DataLoader(test_dataset, batch_size=1, shuffle=True, num_workers=0)
 
 # **模型参数**
-input_size = 1  # 每个时间步只有一个变量 (单独处理 close 和 volume)
+input_size = 2  # 每个时间步只有一个变量 (单独处理 close 和 volume)
 hidden_size = 60
 num_layers = 2
 encoded_size = 40
@@ -53,15 +53,8 @@ with torch.no_grad():
     (close_1, close_10, close_60, close_240, close_1380,
      volume_1, volume_10, volume_60, volume_240, volume_1380, evaluation_data_current) = next(iter(test_dataloader))
 
-    # **合并 10 个时间序列**
-    sequences = [close_1, close_10, close_60, close_240, close_1380,
-                 volume_1, volume_10, volume_60, volume_240, volume_1380]
-
     # **逐个编码 10 个序列**
     encoded_vectors = []
-    for seq in sequences:
-        seq_encoded = encoder(seq.unsqueeze(-1).float())  # 形状: (1, 40)
-        encoded_vectors.append(seq_encoded)
 
     # 合并输入特征（close 和 volume）
     x_sample1 = torch.cat((close_1.unsqueeze(-1), volume_1.unsqueeze(-1)), dim=2).float()  # (1, sequence_length, input_size)
@@ -75,6 +68,12 @@ with torch.no_grad():
     vector3 = encoder3(x_sample3)
     vector4 = encoder4(x_sample4)
     vector5 = encoder5(x_sample5)
+
+    encoded_vectors.append(vector1)
+    encoded_vectors.append(vector2)
+    encoded_vectors.append(vector3)
+    encoded_vectors.append(vector4)
+    encoded_vectors.append(vector5)
     # **最终拼接为 (1, 400) 维向量**
     final_encoded_vector = torch.cat(encoded_vectors, dim=-1)  # 形状: (1, 400)
 

@@ -7,13 +7,7 @@ from LSTM1 import LSTMEncoder  # 只加载 Encoder
 from MLP import MLPRegressor
 import pandas as pd
 
-# **超参数**
-input_dim = 40 * 5  # 输入维度（40 × 5）
-output_dim = 5  # 输出 5 个 evaluation 值
-hidden_dim = 128  # 隐藏层大小
-num_epochs = 20
-batch_size = 32
-learning_rate = 0.001
+
 
 # **数据集路径**
 data_base = 'D:/quantum/quantum_t_data/quantum_t_data'
@@ -29,54 +23,42 @@ train_dataset = TimeSeriesLSTMTSDataset(train_df, sequence_length, sequence_leng
 train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=0)
 
 # **加载共享的 LSTMEncoder**
-input_size = 1
+input_size = 2
 hidden_size = 60
 num_layers = 2
 encoded_size = 40
 
-encoder = LSTMEncoder(input_size, hidden_size, num_layers, encoded_size)
+# **创建共享的 LSTMEncoder**
+encoder1 = LSTMEncoder(input_size, hidden_size, num_layers, encoded_size)
+encoder2 = LSTMEncoder(input_size, hidden_size, num_layers, encoded_size)
+encoder3 = LSTMEncoder(input_size, hidden_size, num_layers, encoded_size)
+encoder4 = LSTMEncoder(input_size, hidden_size, num_layers, encoded_size)
+encoder5 = LSTMEncoder(input_size, hidden_size, num_layers, encoded_size)
+
+# **加载训练好的模型权重**
 model_path = data_base + '/models/lstm1_encoder/LSTMAutoencoder_trained2.pth'
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 state_dict = torch.load(model_path, map_location=device)
-encoder.load_state_dict(state_dict, strict=False)
-encoder.eval()  # 设为评估模式
+encoder1.load_state_dict(state_dict, strict=False)
+encoder2.load_state_dict(state_dict, strict=False)
+encoder3.load_state_dict(state_dict, strict=False)
+encoder4.load_state_dict(state_dict, strict=False)
+encoder5.load_state_dict(state_dict, strict=False)
+encoder1.eval()  # 设为评估模式
+encoder2.eval()  # 设为评估模式
+encoder3.eval()  # 设为评估模式
+encoder4.eval()  # 设为评估模式
+encoder5.eval()  # 设为评估模式
+
+# **超参数**
+input_dim = 40 * 5  # 输入维度（40 × 5）
+output_dim = 5  # 输出 5 个 evaluation 值
+hidden_dim = 128  # 隐藏层大小
+num_epochs = 20
+batch_size = 32
+learning_rate = 0.001
 
 # **实例化 MLP**
 mlp_model = MLPRegressor(input_dim, hidden_dim, output_dim)
 criterion = nn.MSELoss()  # 均方误差损失
 optimizer = optim.Adam(mlp_model.parameters(), lr=learning_rate)
-
-# **训练 MLP**
-for epoch in range(num_epochs):
-    total_loss = 0
-    for (close_1, close_10, close_60, close_240, close_1380,
-         volume_1, volume_10, volume_60, volume_240, volume_1380, evaluation_values) in train_dataloader:
-
-        # **逐个编码 10 个时间序列**
-        encoded_vectors = []
-        for seq in [close_1, close_10, close_60, close_240, close_1380,
-                    volume_1, volume_10, volume_60, volume_240, volume_1380]:
-            seq_encoded = encoder(seq.unsqueeze(-1).float())  # 形状: (batch_size, 40)
-            encoded_vectors.append(seq_encoded)
-
-        # **最终拼接为 (batch_size, 400)**
-        final_encoded_vector = torch.cat(encoded_vectors, dim=-1)  # 形状: (batch_size, 400)
-
-        # **前向传播**
-        predicted_eval = mlp_model(final_encoded_vector)  # 输出形状: (batch_size, 5)
-
-        # **计算损失**
-        loss = criterion(predicted_eval, evaluation_values)  # 计算 MSELoss
-        total_loss += loss.item()
-
-        # **反向传播**
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-
-    avg_loss = total_loss / len(train_dataloader)
-    print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {avg_loss:.6f}")
-
-# **保存训练好的 MLP 模型**
-torch.save(mlp_model.state_dict(), data_base + "/models/mlp_regressor.pth")
-print("MLP 训练完成，模型已保存！")
