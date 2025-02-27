@@ -6,7 +6,8 @@ from dataloader_LSTMTS import TimeSeriesLSTMTSDataset
 from torch.utils.data import DataLoader
 
 # 读取测试集数据
-data_base = '/Users/wentianwang/Library/CloudStorage/GoogleDrive-littlenova223@gmail.com/My Drive/quantum_t_data'
+#data_base = '/Users/wentianwang/Library/CloudStorage/GoogleDrive-littlenova223@gmail.com/My Drive/quantum_t_data'
+data_base = 'D:/quantum/quantum_t_data/quantum_t_data'
 test_path = data_base + '/type6/Nasdaq_qqq_align_labeled_base_evaluated_normST1_test.pkl'
 
 # **统一时间序列长度**

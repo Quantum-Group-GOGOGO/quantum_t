@@ -9,11 +9,16 @@ import pandas as pd
 from tqdm import tqdm
 import random
 
+
+
 # 将下面的代码放在 main 块中
 if __name__ == "__main__":
+    # 检查是否可用 GPU
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Using device: {device}")
     # 假设你已经有一个加载好的 DataFrame 'df'
-    data_base = '/Users/wentianwang/Library/CloudStorage/GoogleDrive-littlenova223@gmail.com/My Drive/quantum_t_data'
-    #data_base = 'D:/quantum/quantum_t_data/quantum_t_data'
+    #data_base = '/Users/wentianwang/Library/CloudStorage/GoogleDrive-littlenova223@gmail.com/My Drive/quantum_t_data'
+    data_base = 'D:/quantum/quantum_t_data/quantum_t_data'
     # 读取训练集和测试集
     train_path = data_base + '/type6/Nasdaq_qqq_align_labeled_base_evaluated_normST1_train.pkl'
     test_path = data_base + '/type6/Nasdaq_qqq_align_labeled_base_evaluated_normST1_test.pkl'
@@ -115,6 +120,6 @@ if __name__ == "__main__":
             print(f'Epoch [{epoch+1}/{num_epochs}], Test Loss (Random Sample): {test_loss:.8f}')
 
         # 保存模型
-        model_path = data_base + '/models/lstm1_encoder/LSTMAutoencoder_trained2.pth'
+        model_path = data_base + '/models/lstm1_encoder/LSTMAutoencoder_trained3.pth'
         torch.save(model.state_dict(), model_path)
         print(f"模型已保存到: {model_path}")
