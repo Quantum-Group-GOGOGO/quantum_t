@@ -25,13 +25,27 @@ num_layers = 2
 encoded_size = 40
 
 # **创建共享的 LSTMEncoder**
-encoder = LSTMEncoder(input_size, hidden_size, num_layers, encoded_size)
+encoder1 = LSTMEncoder(input_size, hidden_size, num_layers, encoded_size)
+encoder2 = LSTMEncoder(input_size, hidden_size, num_layers, encoded_size)
+encoder3 = LSTMEncoder(input_size, hidden_size, num_layers, encoded_size)
+encoder4 = LSTMEncoder(input_size, hidden_size, num_layers, encoded_size)
+encoder5 = LSTMEncoder(input_size, hidden_size, num_layers, encoded_size)
+
 
 # **加载训练好的模型权重**
 model_path = data_base + '/models/lstm1_encoder/LSTMAutoencoder_trained2.pth'
-state_dict = torch.load(model_path, map_location=torch.device('cpu'))
-encoder.load_state_dict(state_dict, strict=False)
-encoder.eval()  # 设为评估模式
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+state_dict = torch.load(model_path, map_location=device)
+encoder1.load_state_dict(state_dict, strict=False)
+encoder2.load_state_dict(state_dict, strict=False)
+encoder3.load_state_dict(state_dict, strict=False)
+encoder4.load_state_dict(state_dict, strict=False)
+encoder5.load_state_dict(state_dict, strict=False)
+encoder1.eval()  # 设为评估模式
+encoder2.eval()  # 设为评估模式
+encoder3.eval()  # 设为评估模式
+encoder4.eval()  # 设为评估模式
+encoder5.eval()  # 设为评估模式
 
 # **获取一个测试样本**
 with torch.no_grad():
@@ -49,41 +63,18 @@ with torch.no_grad():
         seq_encoded = encoder(seq.unsqueeze(-1).float())  # 形状: (1, 40)
         encoded_vectors.append(seq_encoded)
 
+    # 合并输入特征（close 和 volume）
+    x_sample1 = torch.cat((close_1.unsqueeze(-1), volume_1.unsqueeze(-1)), dim=2).float()  # (1, sequence_length, input_size)
+    x_sample2 = torch.cat((close_10.unsqueeze(-1), volume_10.unsqueeze(-1)), dim=2).float()  # (1, sequence_length, input_size)
+    x_sample3 = torch.cat((close_60.unsqueeze(-1), volume_60.unsqueeze(-1)), dim=2).float()  # (1, sequence_length, input_size)
+    x_sample4 = torch.cat((close_240.unsqueeze(-1), volume_240.unsqueeze(-1)), dim=2).float()  # (1, sequence_length, input_size)
+    x_sample5 = torch.cat((close_1380.unsqueeze(-1), volume_1380.unsqueeze(-1)), dim=2).float()  # (1, sequence_length, input_size)
+
+    vector1 = encoder1(x_sample1)
+    vector2 = encoder2(x_sample2)
+    vector3 = encoder3(x_sample3)
+    vector4 = encoder4(x_sample4)
+    vector5 = encoder5(x_sample5)
     # **最终拼接为 (1, 400) 维向量**
     final_encoded_vector = torch.cat(encoded_vectors, dim=-1)  # 形状: (1, 400)
 
-    # **打印最终编码向量**
-    print("Encoded Vector (Shape: 1 × 400):")
-    print(final_encoded_vector.squeeze(0).numpy())  # 转换为 NumPy 并打印
-
-    # **绘制 10 条原始时间序列**
-    plt.figure(figsize=(12, 8))
-    time_steps = list(range(sequence_length))  # 统一长度 120
-
-    # **绘制 5 个 close**
-    plt.subplot(2, 1, 1)
-    plt.plot(time_steps, close_1.squeeze(0).numpy(), label='Close_1', linestyle='-')
-    plt.plot(time_steps, close_10.squeeze(0).numpy(), label='Close_10', linestyle='--')
-    plt.plot(time_steps, close_60.squeeze(0).numpy(), label='Close_60', linestyle='-.')
-    plt.plot(time_steps, close_240.squeeze(0).numpy(), label='Close_240', linestyle=':')
-    plt.plot(time_steps, close_1380.squeeze(0).numpy(), label='Close_1380', linestyle='-.')
-    plt.xlabel('Time Step')
-    plt.ylabel('Close Price')
-    plt.title('Original Close Time Series')
-    plt.legend()
-
-    # **绘制 5 个 volume**
-    plt.subplot(2, 1, 2)
-    plt.plot(time_steps, volume_1.squeeze(0).numpy(), label='Volume_1', linestyle='-')
-    plt.plot(time_steps, volume_10.squeeze(0).numpy(), label='Volume_10', linestyle='--')
-    plt.plot(time_steps, volume_60.squeeze(0).numpy(), label='Volume_60', linestyle='-.')
-    plt.plot(time_steps, volume_240.squeeze(0).numpy(), label='Volume_240', linestyle=':')
-    plt.plot(time_steps, volume_1380.squeeze(0).numpy(), label='Volume_1380', linestyle='-.')
-    plt.xlabel('Time Step')
-    plt.ylabel('Volume')
-    plt.title('Original Volume Time Series')
-    plt.legend()
-
-    # **显示图像**
-    plt.tight_layout()
-    plt.show()

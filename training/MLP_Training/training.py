@@ -36,7 +36,8 @@ encoded_size = 40
 
 encoder = LSTMEncoder(input_size, hidden_size, num_layers, encoded_size)
 model_path = data_base + '/models/lstm1_encoder/LSTMAutoencoder_trained2.pth'
-state_dict = torch.load(model_path, map_location=torch.device('cpu'))
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+state_dict = torch.load(model_path, map_location=device)
 encoder.load_state_dict(state_dict, strict=False)
 encoder.eval()  # 设为评估模式
 
