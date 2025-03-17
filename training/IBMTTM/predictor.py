@@ -16,15 +16,16 @@ from tsfm_public import (
 from tsfm_public.toolkit.get_model import get_model
 from tsfm_public.toolkit.lr_finder import optimal_lr_finder
 from tsfm_public.toolkit.visualization import plot_predictions
-
-data_base = '/Users/wentianwang/Library/CloudStorage/GoogleDrive-littlenova223@gmail.com/My Drive/quantum_t_data'
-#data_base = 'D:/quantum/quantum_t_data/quantum_t_data'
+import matplotlib.pyplot as plt
+import random
+#data_base = '/Users/wentianwang/Library/CloudStorage/GoogleDrive-littlenova223@gmail.com/My Drive/quantum_t_data'
+data_base = 'D:/quantum/quantum_t_data/quantum_t_data'
 
 
 # Results dir
 # Forecasting parameters
 context_length = 512
-forecast_length = 96
+forecast_length = 30
 timestamp_column = 'datetime'
 id_columns = []
 column_specifiers = {
@@ -64,24 +65,24 @@ finetuned_model = get_model(
 
 DATA_ROOT_PATH = data_base + '/type6/Nasdaq_qqq_align_labeled_base_evaluated_normST1.pkl'
 
-#time_column_series = pd.read_pickle(data_base + '/type4/Nasdaq_qqq_align_labeled_base_evaluated.pkl')['datetime']
-#raw_data = pd.read_pickle(DATA_ROOT_PATH)
+time_column_series = pd.read_pickle(data_base + '/type4/Nasdaq_qqq_align_labeled_base_evaluated.pkl')['datetime']
+raw_data = pd.read_pickle(DATA_ROOT_PATH)
 
 
-#raw_data = pd.concat([time_column_series, raw_data], axis=1)
+raw_data = pd.concat([time_column_series, raw_data], axis=1)
 
-#raw_data[timestamp_column] = pd.to_datetime(raw_data[timestamp_column])
+raw_data[timestamp_column] = pd.to_datetime(raw_data[timestamp_column])
 
 # Set the 'datetime' column as the index for resampling
-#raw_data.set_index('datetime', inplace=True)
+raw_data.set_index('datetime', inplace=True)
 
 # Resample the data to get hourly intervals using the 'first' value of each hour
 #data = raw_data.resample('10min').first()
 
 # Reset the index to convert the datetime index back to a column
 #data.reset_index(inplace=True)
-#raw_data.reset_index(inplace=True)
-#data.to_pickle(data_base + '/type6/10minprocessed.pkl')
+raw_data.reset_index(inplace=True)
+raw_data.to_pickle(data_base + '/type6/10minprocessed.pkl')
 data=pd.read_pickle(data_base + '/type6/10minprocessed.pkl')
 split_params = {"train": [0, 0.7], "valid": [0.7, 0.8], "test": [0.8, 1.0]}
 
@@ -90,3 +91,28 @@ train_dataset, valid_dataset, test_dataset = get_datasets(
     raw_data,
     split_params,
 )
+
+print(raw_data.tail())
+for i in range(len(test_dataset) - 10, len(test_dataset)):
+    print(test_dataset[i])
+
+temp_dir = tempfile.mkdtemp()
+finetune_forecast_trainer = Trainer(
+        model=finetuned_model,
+        args=TrainingArguments(
+            output_dir=temp_dir,
+            per_device_eval_batch_size=256,
+        ),
+)
+#finetune_forecast_trainer.evaluate(test_dataset)
+
+plot_predictions(
+    model=finetune_forecast_trainer.model,
+    dset=test_dataset,
+    plot_dir=os.path.join(temp_dir, "close_1min"),
+    plot_prefix="test_zeroshot",
+    channel=0,
+    timestamp_column=timestamp_column,
+    indices=random.sample(range(len(test_dataset)), 10)
+)
+plt.show()

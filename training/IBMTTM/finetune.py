@@ -36,7 +36,7 @@ if __name__ == "__main__":
 
     # Forecasting parameters
     context_length = 512
-    forecast_length = 96
+    forecast_length = 30
 
     timestamp_column = 'datetime'
     id_columns = []
@@ -143,7 +143,7 @@ if __name__ == "__main__":
 
     train_dataset, valid_dataset, test_dataset = get_datasets(
         tsp,
-        raw_data,
+        data,
         split_params,
     )
 
@@ -209,7 +209,7 @@ if __name__ == "__main__":
     )
 
     # Important parameters
-    num_epochs = 20  # Ideally, we need more epochs (try offline preferably in a gpu for faster computation)
+    num_epochs = 19  # Ideally, we need more epochs (try offline preferably in a gpu for faster computation)
     batch_size = 128
 
     learning_rate, finetune_forecast_model = optimal_lr_finder(
@@ -270,5 +270,5 @@ if __name__ == "__main__":
 
     # Fine tune
     finetune_forecast_trainer.train()
-    finetune_forecast_trainer.save_model("finetune_model")
+    finetune_forecast_trainer.save_model("finetune_10_model")
     #finetune_forecast_trainer.evaluate(test_dataset)

@@ -51,7 +51,7 @@
     0,
     1
   ],
-  "prediction_filter_length": null,
+  "prediction_filter_length": 30,
   "prediction_length": 96,
   "quantile": 0.5,
   "resolution_prefix_tuning": false,
