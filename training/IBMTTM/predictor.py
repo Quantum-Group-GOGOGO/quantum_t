@@ -31,7 +31,7 @@ id_columns = []
 column_specifiers = {
         "timestamp_column": timestamp_column,
         "id_columns": id_columns,
-        "target_columns": ["close_10", 'volume_10'],
+        "target_columns": ["close_10"],
         "conditional_columns": [
         'sinT',
         'cosT',
@@ -54,7 +54,7 @@ tsp = TimeSeriesPreprocessor(
         encode_categorical=False,
         scaler_type="standard",
     )
-model_save_path = "finetune_model"
+model_save_path = "finetune_10_s1only_model"
 finetuned_model = get_model(
         model_save_path,
         context_length=context_length,
@@ -77,13 +77,13 @@ raw_data[timestamp_column] = pd.to_datetime(raw_data[timestamp_column])
 raw_data.set_index('datetime', inplace=True)
 
 # Resample the data to get hourly intervals using the 'first' value of each hour
-#data = raw_data.resample('10min').first()
+raw_data = raw_data.resample('10min').first()
 
 # Reset the index to convert the datetime index back to a column
 #data.reset_index(inplace=True)
 raw_data.reset_index(inplace=True)
 raw_data.to_pickle(data_base + '/type6/10minprocessed.pkl')
-data=pd.read_pickle(data_base + '/type6/10minprocessed.pkl')
+#data=pd.read_pickle(data_base + '/type6/10minprocessed.pkl')
 split_params = {"train": [0, 0.7], "valid": [0.7, 0.8], "test": [0.8, 1.0]}
 
 train_dataset, valid_dataset, test_dataset = get_datasets(
@@ -109,7 +109,7 @@ finetune_forecast_trainer = Trainer(
 plot_predictions(
     model=finetune_forecast_trainer.model,
     dset=test_dataset,
-    plot_dir=os.path.join(temp_dir, "close_1min"),
+    plot_dir=os.path.join(temp_dir, "close_10min"),
     plot_prefix="test_zeroshot",
     channel=0,
     timestamp_column=timestamp_column,

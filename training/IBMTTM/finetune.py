@@ -114,7 +114,7 @@ if __name__ == "__main__":
     column_specifiers = {
         "timestamp_column": timestamp_column,
         "id_columns": id_columns,
-        "target_columns": ["close_10", 'volume_10'],
+        "target_columns": ["close_10"],
         "conditional_columns": [
         'sinT',
         'cosT',
@@ -269,6 +269,7 @@ if __name__ == "__main__":
     )
 
     # Fine tune
+    #print(data.columns)
     finetune_forecast_trainer.train()
-    finetune_forecast_trainer.save_model("finetune_10_model")
+    finetune_forecast_trainer.save_model("finetune_10_s1only_model")
     #finetune_forecast_trainer.evaluate(test_dataset)

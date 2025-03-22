@@ -9,7 +9,7 @@
   "d_model": 192,
   "decoder_adaptive_patching_levels": 0,
   "decoder_d_model": 128,
-  "decoder_mode": "common_channel",
+  "decoder_mode": "mix_channel",
   "decoder_num_layers": 2,
   "decoder_raw_residual": false,
   "distribution_output": "student_t",
