@@ -50,9 +50,11 @@ encoder = LSTMEncoder(input_size, hidden_size, num_layers, encoded_size)
 
 # **编码 10 个时间序列**
 encoded_vectors = []
-for seq in [close_1, close_10, close_60, close_240, close_1380,
-            volume_1, volume_10, volume_60, volume_240, volume_1380]:
-    seq_encoded = encoder(seq.unsqueeze(-1).float())  # 形状: (1, 40)
+for close_seq, volume_seq in [(close_1, volume_1), (close_10, volume_10), (close_60, volume_60),
+                              (close_240, volume_240), (close_1380, volume_1380)]:
+    # 拼接后形状为 (batch_size, sequence_length, 2)
+    seq = torch.cat([close_seq.unsqueeze(-1), volume_seq.unsqueeze(-1)], dim=-1).float()
+    seq_encoded = encoder(seq)  # 得到 (batch_size, encoded_size)
     encoded_vectors.append(seq_encoded)
 
 # **拼接编码向量**

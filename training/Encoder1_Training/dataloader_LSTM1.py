@@ -73,7 +73,7 @@ class TimeSeriesLSTM1Dataset(Dataset):
         #加评测值
         evaluation_data_current = self.evaluation_data[end_idx]
 
-        return (close_1, volume_1)
+        return (close_1380, volume_1380)
     
     def normalize_series(self, series):
         # 使用最后一个点作为基准进行归一化
