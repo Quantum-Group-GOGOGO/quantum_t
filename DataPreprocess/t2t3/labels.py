@@ -64,6 +64,8 @@ df_0830 = df[df['datetime'].dt.time == pd.to_datetime('08:30:00').time()]
 df.loc[df_0830.index, 'event'] = np.where(
     abs(df_0830['close_next'] - df_0830['close_prev']) / df_0830['close_prev'] > 0.005, 1, 0
 )
+# 第一行自动填充成1
+df.iloc[0, df.columns.get_loc('event')] = 1
 # 最后一行自动填充成1
 df.iloc[-1, df.columns.get_loc('event')] = 1
 # 删除临时列
@@ -98,6 +100,8 @@ df['time_break_flag'] = np.where(
     1,
     0
 )
+# 第一行自动填充成1
+df.iloc[0, df.columns.get_loc('time_break_flag')] = 1
 # 最后一行自动填充成1
 df.iloc[-1, df.columns.get_loc('time_break_flag')] = 1
 

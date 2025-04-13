@@ -31,9 +31,9 @@ df=pd.read_pickle(T6_data_path)
 #plt.show()
 
 # 生成报告
-#profile = ProfileReport(df)
+profile = ProfileReport(df)
 
 # 保存为 HTML 文件
-#report_file = "report.html"
-#profile.to_file(report_file)
+report_file = "report.html"
+profile.to_file(report_file)
 print(df.head())
