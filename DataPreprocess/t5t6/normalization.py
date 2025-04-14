@@ -54,9 +54,11 @@ def logi_rescale(df, column_name, scaling_factor=1):
 
     # 内部的 Logit 函数
     def logit(x):
-        return np.log(x / (1 - x))
+            return np.log(x / (1 - x))
 
     # 1. 通过 Logit 函数投影到 [-inf, +inf]，直接覆写原来的列
+    df.loc[df[column_name] > 1-1e-9, column_name] = 1-1e-9
+    df.loc[df[column_name] < 1e-9, column_name] = 1e-9
     df[column_name] = logit(df[column_name])
     df[column_name] = df[column_name] / scaling_factor
     # 2. 通过 Sigmoid 函数重新投影回 [0, 1]，并调整缩放因子
@@ -95,11 +97,20 @@ exp_norm(df, 'absolute_time', scaling_factor=8e6)
 #logistic函数归一化
 #sf越大，归一化越靠中间
 #sf越小，归一化越分散
-logi_norm(df, 'evaluation_30', scaling_factor=1e0)
-logi_norm(df, 'evaluation_60', scaling_factor=2e0)
-logi_norm(df, 'evaluation_120', scaling_factor=4e0)
-logi_norm(df, 'evaluation_300', scaling_factor=4e0)
-logi_norm(df, 'evaluation_480', scaling_factor=1e1)
+#logi_norm(df, 'evaluation_30', scaling_factor=1e0)
+#logi_norm(df, 'evaluation_60', scaling_factor=2e0)
+#logi_norm(df, 'evaluation_120', scaling_factor=4e0)
+#logi_norm(df, 'evaluation_300', scaling_factor=4e0)
+#logi_norm(df, 'evaluation_480', scaling_factor=1e1)
+
+#logistic函数归一化
+#sf越大，归一化越靠中间
+#sf越小，归一化越分散
+#logi_norm(df, 'evaluation_30h', scaling_factor=1e0)
+#logi_norm(df, 'evaluation_60h', scaling_factor=2e0)
+#logi_norm(df, 'evaluation_120h', scaling_factor=4e0)
+#logi_norm(df, 'evaluation_300h', scaling_factor=4e0)
+#logi_norm(df, 'evaluation_480h', scaling_factor=1e1)
 
 #重新调整数据分布
 #sf<1e0 越小越扩散到两头
