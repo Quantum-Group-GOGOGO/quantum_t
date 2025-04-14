@@ -30,12 +30,15 @@ num_layers = 2
 encoded_size = 40
 
 # 实例化模型
-model = LSTMAutoencoder(input_size, hidden_size, num_layers, encoded_size)
+model_encoder = LSTMAutoencoder(input_size, hidden_size, num_layers, encoded_size)
+model_decoder = LSTMAutoencoder(input_size, hidden_size, num_layers, encoded_size)
 
 # 加载训练好的模型参数
 model_path = data_base + '/models/lstm1_encoder/LSTMAutoencoder_trained2.pth'
-model.load_state_dict(torch.load(model_path))
-model.eval()  # 切换到评估模式
+model_encoder.load_state_dict(torch.load(model_path))
+model_decoder.load_state_dict(torch.load(model_path))
+model_encoder.eval()  # 切换到评估模式
+model_decoder.eval()  # 切换到评估模式
 
 # 获取一个测试样本并进行重构
 with torch.no_grad():
@@ -44,10 +47,11 @@ with torch.no_grad():
      volume_1, volume_10, volume_60, volume_240, volume_1380, evaluation_data_current) = next(iter(test_dataloader))
 
     # 合并输入特征（close 和 volume）
-    x_sample = torch.cat((close_10.unsqueeze(-1), volume_10.unsqueeze(-1)), dim=2).float()  # (1, sequence_length, input_size)
+    x_sample = torch.cat((close_1.unsqueeze(-1), volume_1.unsqueeze(-1)), dim=2).float()  # (1, sequence_length, input_size)
 
     # 通过模型进行前向传播，得到重构的输出
-    reconstructed_output = model(x_sample)
+    middle_vector = model_encoder.encoder(x_sample)
+    reconstructed_output = model_decoder.decoder(middle_vector,x_sample.size(1))
 
     # 获取第一个样本的原始和重构序列（由于 batch_size=1，取出第一个即可）
     original_sequence = x_sample.squeeze(0).numpy()  # 转换为 numpy 数组以便绘图
@@ -57,7 +61,7 @@ with torch.no_grad():
     plt.figure(figsize=(12, 6))
 
     # 绘制 Close_1 原始和重构序列的曲线
-    plt.subplot(2, 1, 1)
+    plt.subplot(3, 1, 1)
     plt.plot(original_sequence[:, 0], label='Original Close_10', color='blue')
     plt.plot(reconstructed_sequence[:, 0], label='Reconstructed Close_10', color='red', linestyle='--')
     plt.xlabel('Time Step')
@@ -66,7 +70,7 @@ with torch.no_grad():
     plt.legend()
 
     # 绘制 Volume_1 原始和重构序列的曲线
-    plt.subplot(2, 1, 2)
+    plt.subplot(3, 1, 2)
     plt.plot(original_sequence[:, 1], label='Original Volume_10', color='blue')
     plt.plot(reconstructed_sequence[:, 1], label='Reconstructed Volume_10', color='red', linestyle='--')
     plt.xlabel('Time Step')
