@@ -10,7 +10,9 @@ import pandas as pd
 # **超参数**
 input_dim = 40 * 5  # 输入维度（40 × 5）
 output_dim = 5  # 输出 5 个 evaluation 值
-hidden_dim = 128  # 隐藏层大小
+hidden_dim1 = 400  # 隐藏层大小
+hidden_dim2 = 128  # 隐藏层大小
+hidden_dim3 = 40  # 隐藏层大小
 num_epochs = 20
 batch_size = 32
 learning_rate = 0.001
@@ -34,7 +36,7 @@ test_dataset = TimeSeriesLSTMTSDataset(test_df, sequence_length_1, sequence_leng
 test_dataloader = DataLoader(test_dataset, batch_size=1, shuffle=True, num_workers=0)
 
 # **加载 MLP 模型**
-mlp_model = MLPRegressor(input_dim, hidden_dim, output_dim)
+mlp_model = MLPRegressor(input_dim, hidden_dim1, hidden_dim2, hidden_dim3, output_dim)
 mlp_model.load_state_dict(torch.load(data_base + "/models/mlp_regressor.pth"))
 mlp_model.eval()
 

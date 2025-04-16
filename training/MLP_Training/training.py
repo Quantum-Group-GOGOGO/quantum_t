@@ -63,15 +63,25 @@ for param in encoder5.parameters():
 # **超参数**
 input_dim = 40 * 5  # 输入维度（40 × 5）
 output_dim = 5  # 输出 5 个 evaluation 值
-hidden_dim1 = 128  # 隐藏层大小
-hidden_dim2 = 64  # 隐藏层大小
-hidden_dim3 = 20  # 隐藏层大小
+hidden_dim1 = 400  # 隐藏层大小
+hidden_dim2 = 128  # 隐藏层大小
+hidden_dim3 = 40  # 隐藏层大小
 num_epochs = 20
 batch_size = 32
-learning_rate = 0.001
+learning_rate = 0.0002
 
-# **实例化 MLP**
+# 将学习率设为一个可训练的变量
+lr_meta = torch.tensor(learning_rate, requires_grad=True, device=device)
+# 定义一个用于更新 lr_meta 的 Adam 优化器（外层优化器），超参数更新学习率设为 1e-3
+meta_optimizer = optim.Adam([lr_meta], lr=1e-3)
+
+# 实例化 MLP
 mlp_model = MLPRegressor(input_dim, hidden_dim1, hidden_dim2, hidden_dim3, output_dim).to(device)
+
+# 内层优化器：用于更新 mlp_model 的参数，初始学习率由 lr_meta 的值给出
+inner_optimizer = optim.Adam(mlp_model.parameters(), lr=lr_meta.item())
+
+
 criterion = nn.MSELoss()  # 均方误差损失
 optimizer = optim.Adam(mlp_model.parameters(), lr=learning_rate)
 
@@ -129,6 +139,19 @@ for epoch in range(num_epochs):
             # 每 1000 个 batch 保存一次平均训练 loss 到文件中
             if global_batch_count % 1000 == 0:
                 avg_loss = accumulated_loss / 1000
+                # 下面进行超参数更新（更新 lr_meta）
+                # 注意：实际实现中要确保整个过程的计算图是连贯的，本示例仅为结构演示
+                meta_optimizer.zero_grad()
+                # 假设 avg_loss 可以直接反向传播得到关于 lr_meta 的梯度（真实情况需要展开内层更新步骤）
+                # 此处为了演示，我们将 avg_loss 转为一个标量张量并调用 backward()
+                hyper_loss = torch.tensor(avg_loss, requires_grad=True, device=device)
+                hyper_loss.backward()
+                meta_optimizer.step()
+                
+                # 将内层优化器的学习率更新为 lr_meta 新的数值
+                new_lr = lr_meta.item()
+                for param_group in inner_optimizer.param_groups:
+                    param_group['lr'] = new_lr
                 # 以追加模式写入文件，每次写入一行
                 with open(data_base + '/models/training_loss.txt', 'a') as f:
                     f.write(f"{avg_loss}\n")

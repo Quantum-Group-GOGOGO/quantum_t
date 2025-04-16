@@ -65,7 +65,7 @@ with torch.no_grad():
     plt.plot(original_sequence[:, 0], label='Original Close_10', color='blue')
     plt.plot(reconstructed_sequence[:, 0], label='Reconstructed Close_10', color='red', linestyle='--')
     plt.xlabel('Time Step')
-    plt.ylabel('Close_10 Value')
+    plt.ylabel('Close_1 Value')
     plt.title('Original vs Reconstructed Close_10')
     plt.legend()
 
@@ -74,10 +74,17 @@ with torch.no_grad():
     plt.plot(original_sequence[:, 1], label='Original Volume_10', color='blue')
     plt.plot(reconstructed_sequence[:, 1], label='Reconstructed Volume_10', color='red', linestyle='--')
     plt.xlabel('Time Step')
-    plt.ylabel('Volume_10 Value')
+    plt.ylabel('Volume_1 Value')
     plt.title('Original vs Reconstructed Volume_10')
     plt.legend()
 
+    # 绘制 evaluation曲线
+    plt.subplot(3, 1, 2)
+    plt.plot(original_sequence[:, 1], label='Original Volume_10', color='blue')
+    plt.xlabel('Time Step')
+    plt.ylabel('Volume_10 Value')
+    plt.title('Original vs Reconstructed Volume_10')
+    plt.legend()
     # 显示图像
     plt.tight_layout()
     plt.show()
