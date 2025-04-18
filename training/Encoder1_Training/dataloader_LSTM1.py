@@ -73,22 +73,25 @@ class TimeSeriesLSTM1Dataset(Dataset):
         #加评测值
         evaluation_data_current = self.evaluation_data[end_idx]
 
-        return (close_1380, volume_1380)
+        return (close_1, volume_1)
     
     def normalize_series(self, series):
         # 使用最后一个点作为基准进行归一化
         last_value = series[-1]
-        normalized_series = expit(25*(series - last_value)/last_value)  # 使用sigmoid函数归一化 4%变化对应sigmoid(1) 所以乘25倍
+        # normalized_series = expit(25*(series - last_value)/last_value)  # 使用sigmoid函数归一化 4%变化对应sigmoid(1) 所以乘25倍
+        normalized_series = 25*(series - last_value)/last_value  # 标准差归一化 不严格归一化
         return normalized_series
 
     def normalize_series1(self, series):
         # 使用最后一个点作为基准进行归一化
         last_value = series[-1]
-        normalized_series = expit(100*(series - last_value)/last_value)  # 使用sigmoid函数归一化 1%变化对应sigmoid(1) 所以乘100倍
+        #normalized_series = expit(100*(series - last_value)/last_value)  # 使用sigmoid函数归一化 1%变化对应sigmoid(1) 所以乘100倍
+        normalized_series = 100*(series - last_value)/last_value  # 标准差归一化 不严格归一化
         return normalized_series
     
     def normalize_series10(self, series):
         # 使用最后一个点作为基准进行归一化
         last_value = series[-1]
-        normalized_series = expit(100*(series - last_value)/last_value)  # 使用sigmoid函数归一化 1%变化对应sigmoid(1) 所以乘100倍
+        #normalized_series = expit(100*(series - last_value)/last_value)  # 使用sigmoid函数归一化 1%变化对应sigmoid(1) 所以乘100倍
+        normalized_series = 100*(series - last_value)/last_value  # 标准差归一化 不严格归一化
         return normalized_series

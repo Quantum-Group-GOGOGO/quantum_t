@@ -57,15 +57,15 @@ if __name__ == "__main__":
 
     # 超参数
     input_size = 2  # 每个时间步的特征数量（两个变量：Close_1 和 Volume_1）
-    hidden_size = 60
+    hidden_size = 120
     num_layers = 2
-    encoded_size = 40
+    encoded_size = 80
     num_epochs = 10
     learning_rate = 0.001
 
     # 实例化模型
     #model = LSTMAutoencoder(input_size, hidden_size, num_layers, encoded_size)
-    model = LSTMAutoencoder(input_size=2, hidden_size=60, num_layers=2, encoded_size=40, num_heads=4, transformer_layers=2)
+    model = LSTMAutoencoder(input_size=2, hidden_size=120, num_layers=2, encoded_size=80, num_heads=4, transformer_layers=2).to(device)
 
 
     # 损失函数和优化器(WeightedMSELoss是自定义损失函数类)
@@ -79,6 +79,8 @@ if __name__ == "__main__":
         # 使用 tqdm 包装 dataloader，显示进度条
         with tqdm(dataloader, desc=f"Epoch [{epoch+1}/{num_epochs}]", unit="batch") as tepoch:
             for sample_close_1, sample_volume_1 in tepoch:
+                sample_close_1 = sample_close_1.to(device)
+                sample_volume_1 = sample_volume_1.to(device)
                 # 合并输入特征（close 和 volume）
                 x_batch = torch.cat((sample_close_1.unsqueeze(-1), sample_volume_1.unsqueeze(-1)), dim=2).float()  # (batch_size, sequence_length, input_size)
 
@@ -109,6 +111,9 @@ if __name__ == "__main__":
             # 从测试集中获取一个样本
             sample_close_1, sample_volume_1 = next(iter(test_dataloader))
 
+            # 把它们都搬到 GPU
+            sample_close_1 = sample_close_1.to(device)
+            sample_volume_1 = sample_volume_1.to(device)
             # 合并输入特征（close 和 volume）
             x_test = torch.cat((sample_close_1.unsqueeze(-1), sample_volume_1.unsqueeze(-1)), dim=2).float()  # 添加 batch 维度
 
@@ -120,6 +125,6 @@ if __name__ == "__main__":
             print(f'Epoch [{epoch+1}/{num_epochs}], Test Loss (Random Sample): {test_loss:.8f}')
 
         # 保存模型
-        model_path = data_base + '/models/lstm1_encoder/LSTMAutoencoder_trained3.pth'
+        model_path = data_base + '/models/lstm1_encoder/LSTMAutoencoder_trained_stdnorm_120to80_s1.pth'
         torch.save(model.state_dict(), model_path)
         print(f"模型已保存到: {model_path}")
