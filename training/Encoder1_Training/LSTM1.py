@@ -26,8 +26,10 @@ class LSTMEncoder(nn.Module):
             trans_out = self.transformer(trans_in)
             # 恢复 (batch, seq_len, hidden)
             out = trans_out.permute(1, 0, 2)
-        # 用最后时刻隐状态映射到 encoded_size
-        encoded = self.fc(out[:, -1, :])
+            # 用最后时刻隐状态映射到 encoded_size
+            encoded = self.fc(out[:, -1, :])
+        else:
+            encoded = self.fc(h_n[-1])
         return encoded
 
 # LSTM Autoencoder 的 Decoder 部分

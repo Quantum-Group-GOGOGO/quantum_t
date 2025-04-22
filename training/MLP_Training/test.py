@@ -36,26 +36,31 @@ test_dataset = TimeSeriesLSTMTSDataset(test_df, sequence_length_1, sequence_leng
 test_dataloader = DataLoader(test_dataset, batch_size=1, shuffle=True, num_workers=0)
 
 # **加载 MLP 模型**
-mlp_model = MLPRegressor(input_dim, hidden_dim1, hidden_dim2, hidden_dim3, output_dim)
-mlp_model.load_state_dict(torch.load(data_base + "/models/mlp_regressor.pth"))
+mlp_model = MLPRegressor(input_dim, hidden_dim1, hidden_dim2, hidden_dim3, output_dim).to(device)
+mlp_model_path = data_base + '/models/mlp_regressor.pth'
+mlp_model.load_state_dict(torch.load(mlp_model_path))
 mlp_model.eval()
 
 # **获取一个测试样本**
 (close_1, close_10, close_60, close_240, close_1380,
  volume_1, volume_10, volume_60, volume_240, volume_1380, evaluation_values) = next(iter(test_dataloader))
-
+close_1, close_10, close_60, close_240, close_1380 = close_1.to(device), close_10.to(device), close_60.to(device), close_240.to(device), close_1380.to(device)
+volume_1, volume_10, volume_60, volume_240, volume_1380 = volume_1.to(device), volume_10.to(device), volume_60.to(device), volume_240.to(device), volume_1380.to(device)
+            
 # 定义模型参数
 input_size = 2  # 每个时间步的特征数量（两个变量：Close_1 和 Volume_1）
 hidden_size = 60
 num_layers = 2
 encoded_size = 40
-encoder1 = LSTMAutoencoder(input_size, hidden_size, num_layers, encoded_size)
-encoder2 = LSTMAutoencoder(input_size, hidden_size, num_layers, encoded_size)
-encoder3 = LSTMAutoencoder(input_size, hidden_size, num_layers, encoded_size)
-encoder4 = LSTMAutoencoder(input_size, hidden_size, num_layers, encoded_size)
-encoder5 = LSTMAutoencoder(input_size, hidden_size, num_layers, encoded_size)
+num_heads = 2
+transformer_layers = 1
+encoder1 = LSTMAutoencoder(input_size, hidden_size, num_layers, encoded_size, num_heads, transformer_layers).to(device)
+encoder2 = LSTMAutoencoder(input_size, hidden_size, num_layers, encoded_size, num_heads, transformer_layers).to(device)
+encoder3 = LSTMAutoencoder(input_size, hidden_size, num_layers, encoded_size, num_heads, transformer_layers).to(device)
+encoder4 = LSTMAutoencoder(input_size, hidden_size, num_layers, encoded_size, num_heads, transformer_layers).to(device)
+encoder5 = LSTMAutoencoder(input_size, hidden_size, num_layers, encoded_size, num_heads, transformer_layers).to(device)
 
-model_path = data_base + '/models/lstm1_encoder/LSTMAutoencoder_trained2.pth'
+model_path = data_base + '/models/lstm1_encoder/LSTMAutoencoder_trained_stdnorm_120to40_s2_tf2-1.pth'
 state_dict = torch.load(model_path, map_location=device, weights_only=True)
 encoder1.load_state_dict(state_dict, strict=True)
 encoder2.load_state_dict(state_dict, strict=True)
@@ -75,5 +80,5 @@ mlp_input = torch.cat([encoded1, encoded2, encoded3, encoded4, encoded5], dim=1)
 predicted_evaluation = mlp_model(mlp_input)
 
 # **打印真实值 vs 预测值**
-print("真实 Evaluation:", evaluation_values.numpy())
-print("预测 Evaluation:", predicted_evaluation.detach().numpy())
+print("真实 Evaluation:", evaluation_values.cpu().numpy())
+print("预测 Evaluation:", predicted_evaluation.detach().cpu().numpy())

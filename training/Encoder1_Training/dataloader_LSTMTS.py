@@ -101,17 +101,20 @@ class TimeSeriesLSTMTSDataset(Dataset):
     def normalize_series60(self, series):
         # 使用最后一个点作为基准进行归一化
         last_value = series[-1]
-        normalized_series = expit(25*(series - last_value)/last_value)  # 使用sigmoid函数归一化 1%变化对应sigmoid(1) 所以乘100倍
+        #normalized_series = expit(25*(series - last_value)/last_value)  # 使用sigmoid函数归一化 1%变化对应sigmoid(1) 所以乘100倍
+        normalized_series = 25*(series - last_value)/last_value  # 标准差归一化 不严格归一化
         return normalized_series
     
     def normalize_series240(self, series):
         # 使用最后一个点作为基准进行归一化
         last_value = series[-1]
-        normalized_series = expit(25*(series - last_value)/last_value)  # 使用sigmoid函数归一化 1%变化对应sigmoid(1) 所以乘100倍
+        #normalized_series = expit(25*(series - last_value)/last_value)  # 使用sigmoid函数归一化 1%变化对应sigmoid(1) 所以乘100倍
+        normalized_series = 25*(series - last_value)/last_value  # 标准差归一化 不严格归一化
         return normalized_series
     
     def normalize_series1380(self, series):
         # 使用最后一个点作为基准进行归一化
         last_value = series[-1]
-        normalized_series = expit(25*(series - last_value)/last_value)  # 使用sigmoid函数归一化 1%变化对应sigmoid(1) 所以乘100倍
+        #normalized_series = expit(25*(series - last_value)/last_value)  # 使用sigmoid函数归一化 1%变化对应sigmoid(1) 所以乘100倍
+        normalized_series = 25*(series - last_value)/last_value  # 标准差归一化 不严格归一化
         return normalized_series

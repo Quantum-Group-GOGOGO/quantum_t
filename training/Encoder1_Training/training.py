@@ -3,7 +3,7 @@ from LSTM1_loss import WeightedMSELoss
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from dataloader_LSTM1 import TimeSeriesLSTM1Dataset
+from dataloader_LSTMTS import TimeSeriesLSTMTSDataset
 from torch.utils.data import DataLoader
 import pandas as pd
 from tqdm import tqdm
@@ -33,14 +33,14 @@ if __name__ == "__main__":
     sequence_length_1380 = 60
 
     # 创建 Dataset 和 DataLoader
-    dataset = TimeSeriesLSTM1Dataset(df, sequence_length_1, sequence_length_10,
+    dataset = TimeSeriesLSTMTSDataset(df, sequence_length_1, sequence_length_10,
                                 sequence_length_60, sequence_length_240, sequence_length_1380)
 
     dataloader = DataLoader(dataset, batch_size=64, shuffle=True, num_workers=0)
 
     # 创建测试集的 Dataset 和 DataLoader
     test_df = pd.read_pickle(test_path)
-    test_dataset = TimeSeriesLSTM1Dataset(test_df, sequence_length_1, sequence_length_10,
+    test_dataset = TimeSeriesLSTMTSDataset(test_df, sequence_length_1, sequence_length_10,
                                         sequence_length_60, sequence_length_240, sequence_length_1380)
     test_dataloader = DataLoader(test_dataset, batch_size=64, shuffle=True, num_workers=0)
     # 查看一个样本
@@ -60,12 +60,14 @@ if __name__ == "__main__":
     hidden_size = 120
     num_layers = 2
     encoded_size = 80
-    num_epochs = 10
+    num_heads = 0
+    transformer_layers = 0
+    num_epochs = 5
     learning_rate = 0.001
 
     # 实例化模型
     #model = LSTMAutoencoder(input_size, hidden_size, num_layers, encoded_size)
-    model = LSTMAutoencoder(input_size=2, hidden_size=120, num_layers=2, encoded_size=80, num_heads=4, transformer_layers=2).to(device)
+    model = LSTMAutoencoder(input_size, hidden_size, num_layers, encoded_size, num_heads, transformer_layers).to(device)
 
 
     # 损失函数和优化器(WeightedMSELoss是自定义损失函数类)
@@ -78,9 +80,11 @@ if __name__ == "__main__":
 
         # 使用 tqdm 包装 dataloader，显示进度条
         with tqdm(dataloader, desc=f"Epoch [{epoch+1}/{num_epochs}]", unit="batch") as tepoch:
-            for sample_close_1, sample_volume_1 in tepoch:
-                sample_close_1 = sample_close_1.to(device)
-                sample_volume_1 = sample_volume_1.to(device)
+            for batch in tepoch:
+                close_1, close_10, close_60, close_240, close_1380, \
+                volume_1, volume_10, volume_60, volume_240, volume_1380, evaluation = batch
+                sample_close_1 = close_1.to(device)
+                sample_volume_1 = volume_1.to(device)
                 # 合并输入特征（close 和 volume）
                 x_batch = torch.cat((sample_close_1.unsqueeze(-1), sample_volume_1.unsqueeze(-1)), dim=2).float()  # (batch_size, sequence_length, input_size)
 
@@ -109,7 +113,7 @@ if __name__ == "__main__":
         model.eval()  # 切换到评估模式
         with torch.no_grad():
             # 从测试集中获取一个样本
-            sample_close_1, sample_volume_1 = next(iter(test_dataloader))
+            sample_close_1, sample_close_10, sample_close_60, sample_close_240, sample_close_1380,sample_volume_1, sample_volume_10, sample_volume_60, sample_volume_240, sample_volume_1380, sample_evaluation_data_current = next(iter(test_dataloader))
 
             # 把它们都搬到 GPU
             sample_close_1 = sample_close_1.to(device)
@@ -125,6 +129,6 @@ if __name__ == "__main__":
             print(f'Epoch [{epoch+1}/{num_epochs}], Test Loss (Random Sample): {test_loss:.8f}')
 
         # 保存模型
-        model_path = data_base + '/models/lstm1_encoder/LSTMAutoencoder_trained_stdnorm_120to80_s1.pth'
+        model_path = data_base + '/models/lstm1_encoder/LSTMAutoencoder_trained_stdnorm_120to80_s3_2LSTM.pth'
         torch.save(model.state_dict(), model_path)
         print(f"模型已保存到: {model_path}")

@@ -8,7 +8,9 @@ from matplotlib.widgets import Slider
 # === 配置区: 在这里直接定义参数 ===
 # 数据根目录和文件路径
 data_base = 'D:/quantum/quantum_t_data/quantum_t_data'
-data_path = data_base + '/type6/Nasdaq_qqq_align_labeled_base_evaluated_normST1_with_predictions.pkl'
+#data_path = data_base + '/type6/Nasdaq_qqq_align_labeled_base_evaluated_normST1_with_predictions.pkl'
+#data_path = data_base + "/type6/Nasdaq_qqq_align_labeled_base_evaluated_normST1_with_predictions_120to40_tf2-1.pkl"
+data_path = data_base + "/type6/Nasdaq_qqq_align_labeled_base_evaluated_normST1_with_predictions_h120to40_tf2-1.pkl"
 # 滑动窗口默认起始行号和窗口长度
 init_start = 1000000  # 初始起始行号
 window = 200          # 窗口长度
@@ -29,7 +31,7 @@ def get_segment(start):
         x = pd.to_datetime(seg["datetime"])
     else:
         x = seg.index
-    y_eval = seg["evaluation_30"].values
+    y_eval = seg["evaluation_30h"].values
     y_pred = seg["prediction1"].values
     return x, y_eval, y_pred
 

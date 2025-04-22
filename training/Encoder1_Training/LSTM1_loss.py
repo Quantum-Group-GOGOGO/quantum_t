@@ -3,7 +3,7 @@ import torch.nn as nn
 
 # 自定义加权损失函数
 class WeightedMSELoss(nn.Module):
-    def __init__(self, close_weight=1.0, volume_weight=0.5):
+    def __init__(self, close_weight=1.0, volume_weight=2.0):
         super(WeightedMSELoss, self).__init__()
         self.close_weight = close_weight
         self.volume_weight = volume_weight
@@ -22,8 +22,14 @@ class WeightedMSELoss(nn.Module):
         seq_length = close_loss.size(1)
         time_weights = torch.linspace(1.0, 2.0, seq_length).to(close_loss.device)  # 线性增加的时间权重，从 1.0 到 2.0
 
+        eps = 1e-6
+        close_range  = close_target.max() - close_target.min() + eps
+        volume_range = volume_target.max()  - volume_target.min() + eps
+        self.close_weight=volume_range/(close_range+volume_range)
+        self.volume_weight=close_range/(close_range+volume_range)
+
         # 计算加权的损失
-        close_loss_weighted = close_loss * self.close_weight * time_weights
+        close_loss_weighted = close_loss * self.close_weight * time_weights * 4
         volume_loss_weighted = volume_loss * self.volume_weight * time_weights
 
         # 计算总损失（对 batch 和序列长度求平均）

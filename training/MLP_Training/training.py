@@ -25,19 +25,21 @@ train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True
 
 # **加载共享的 LSTMEncoder**
 input_size = 2
-hidden_size = 60
+hidden_size = 120
 num_layers = 2
-encoded_size = 40
+encoded_size = 80
+num_heads = 0
+transformer_layers = 0
 
 # **创建共享的 LSTMEncoder**
-encoder1 = LSTMAutoencoder(input_size, hidden_size, num_layers, encoded_size).to(device)
-encoder2 = LSTMAutoencoder(input_size, hidden_size, num_layers, encoded_size).to(device)
-encoder3 = LSTMAutoencoder(input_size, hidden_size, num_layers, encoded_size).to(device)
-encoder4 = LSTMAutoencoder(input_size, hidden_size, num_layers, encoded_size).to(device)
-encoder5 = LSTMAutoencoder(input_size, hidden_size, num_layers, encoded_size).to(device)
+encoder1 = LSTMAutoencoder(input_size, hidden_size, num_layers, encoded_size, num_heads, transformer_layers).to(device)
+encoder2 = LSTMAutoencoder(input_size, hidden_size, num_layers, encoded_size, num_heads, transformer_layers).to(device)
+encoder3 = LSTMAutoencoder(input_size, hidden_size, num_layers, encoded_size, num_heads, transformer_layers).to(device)
+encoder4 = LSTMAutoencoder(input_size, hidden_size, num_layers, encoded_size, num_heads, transformer_layers).to(device)
+encoder5 = LSTMAutoencoder(input_size, hidden_size, num_layers, encoded_size, num_heads, transformer_layers).to(device)
 
 # **加载训练好的模型权重**
-model_path = data_base + '/models/lstm1_encoder/LSTMAutoencoder_trained2.pth'
+model_path = data_base + '/models/lstm1_encoder/LSTMAutoencoder_trained_stdnorm_120to80_s3_2LSTM.pth'
 state_dict = torch.load(model_path, map_location=device, weights_only=True)
 encoder1.load_state_dict(state_dict, strict=True)
 encoder2.load_state_dict(state_dict, strict=True)
@@ -61,15 +63,15 @@ for param in encoder5.parameters():
     param.requires_grad = False
     
 # **超参数**
-input_dim = 40 * 5  # 输入维度（40 × 5）
+input_dim = 80 * 5  # 输入维度（40 × 5）
 output_dim = 5  # 输出 5 个 evaluation 值
-hidden_dim1 = 400  # 隐藏层大小
+hidden_dim1 = 600  # 隐藏层大小
 hidden_dim2 = 128  # 隐藏层大小
 hidden_dim3 = 40  # 隐藏层大小
-num_epochs = 20
+num_epochs = 10
 batch_size = 32
-learning_rate = 0.0002
-
+learning_rate = 0.0001
+adam_learning_rate = 0.0001
 # 将学习率设为一个可训练的变量
 lr_meta = torch.tensor(learning_rate, requires_grad=True, device=device)
 # 定义一个用于更新 lr_meta 的 Adam 优化器（外层优化器），超参数更新学习率设为 1e-3
@@ -83,7 +85,7 @@ inner_optimizer = optim.Adam(mlp_model.parameters(), lr=lr_meta.item())
 
 
 criterion = nn.MSELoss()  # 均方误差损失
-optimizer = optim.Adam(mlp_model.parameters(), lr=learning_rate)
+optimizer = optim.Adam(mlp_model.parameters(), lr=adam_learning_rate)
 
 # 新增全局 batch 计数器和累计损失变量
 global_batch_count = 0
@@ -136,9 +138,9 @@ for epoch in range(num_epochs):
             global_batch_count += 1
             accumulated_loss += loss.item()
 
-            # 每 1000 个 batch 保存一次平均训练 loss 到文件中
-            if global_batch_count % 1000 == 0:
-                avg_loss = accumulated_loss / 1000
+            # 每 5000 个 batch 保存一次平均训练 loss 到文件中
+            if global_batch_count % 5000 == 0:
+                avg_loss = accumulated_loss / 5000
                 # 下面进行超参数更新（更新 lr_meta）
                 # 注意：实际实现中要确保整个过程的计算图是连贯的，本示例仅为结构演示
                 meta_optimizer.zero_grad()
@@ -159,8 +161,8 @@ for epoch in range(num_epochs):
     
     print(f'Epoch [{epoch+1}/{num_epochs}], Loss: {total_loss / len(train_dataloader):.6f}')
 
-# **保存 MLP 模型**
-mlp_model_path = data_base + '/models/mlp_regressor.pth'
-torch.save(mlp_model.state_dict(), mlp_model_path)
+    # **保存 MLP 模型**
+    mlp_model_path = data_base + '/models/mlp_regressor_80to5h_400+128+40.pth'
+    torch.save(mlp_model.state_dict(), mlp_model_path)
 print("训练完成，MLP 模型已保存！")
 

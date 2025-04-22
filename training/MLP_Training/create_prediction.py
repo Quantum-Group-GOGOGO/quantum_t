@@ -14,13 +14,16 @@ def load_encoders(lstm_path, device):
     """
     加载 5 个共享权重的 LSTM 编码器，并冻结参数。
     """
+    input_size = 2
+    hidden_size = 120
+    num_layers = 2
+    encoded_size = 80
+    num_heads = 0
+    transformer_layers = 0
     state_dict = torch.load(lstm_path, map_location=device)
     encoders = []
     for _ in range(5):
-        enc = LSTMAutoencoder(input_size=2,
-                              hidden_size=60,
-                              num_layers=2,
-                              encoded_size=40).to(device)
+        enc = LSTMAutoencoder(input_size, hidden_size, num_layers, encoded_size, num_heads, transformer_layers).to(device)
         enc.load_state_dict(state_dict, strict=True)
         enc.eval()
         for p in enc.parameters():
@@ -37,8 +40,8 @@ def main():
     args = parser.parse_args()
     
     data_base = 'D:\quantum\quantum_t_data\quantum_t_data'
-    lstm_model= data_base + '/models/lstm1_encoder/LSTMAutoencoder_trained2.pth'
-    mlp_model_dic = data_base + '/models/mlp_regressor.pth'
+    lstm_model= data_base + '/models/lstm1_encoder/LSTMAutoencoder_trained_stdnorm_120to80_s3_2LSTM.pth'
+    mlp_model_dic = data_base + '/models/mlp_regressor_80to5h_400+128+40.pth'
     
     # 1. 读原始 DataFrame
     data_path = data_base + "/type6/Nasdaq_qqq_align_labeled_base_evaluated_normST1.pkl"
@@ -79,8 +82,8 @@ def main():
     # 8. 加载模型
     encoders  = load_encoders(lstm_model, device)
     mlp_model = MLPRegressor(
-        input_dim=40*5,
-        hidden_dim1=400,
+        input_dim=80*5,
+        hidden_dim1=600,
         hidden_dim2=128,
         hidden_dim3=40,
         output_dim=5
@@ -116,7 +119,7 @@ def main():
                 df.at[df_idx, f'prediction{j+1}'] = float(pred[j])
 
     # 10. 保存带预测的新 DataFrame
-    out_path = data_base + "/type6/Nasdaq_qqq_align_labeled_base_evaluated_normST1_with_predictions.pkl"
+    out_path = data_base + "/type6/Nasdaq_qqq_align_labeled_base_evaluated_normST1_with_predictions_h120to80_2LSTM.pkl"
     df.to_pickle(out_path)
     print(f"推理完成，结果保存在：{out_path}")
 
