@@ -5,7 +5,7 @@ import argparse
 import torch
 import pandas as pd
 from torch.utils.data import DataLoader, Subset
-
+from tqdm import tqdm
 from dataloader_LSTMTS import TimeSeriesLSTMTSDataset
 from LSTM1 import LSTMAutoencoder
 from MLP import MLPRegressor
@@ -35,13 +35,13 @@ def main():
     parser = argparse.ArgumentParser(description="LSTM+MLP 回归模型推理脚本")
     parser.add_argument('--sequence_length', type=int, default=120,
                         help="训练时使用的序列长度（默认为 120）")
-    parser.add_argument('--batch_size', type=int, default=1,
+    parser.add_argument('--batch_size', type=int, default=64,
                         help="推理时的 batch size（默认为 1，逐行预测）")
     args = parser.parse_args()
     
     data_base = 'D:\quantum\quantum_t_data\quantum_t_data'
     lstm_model= data_base + '/models/lstm1_encoder/LSTMAutoencoder_trained_stdnorm_120to80_s3_2LSTM.pth'
-    mlp_model_dic = data_base + '/models/mlp_regressor_80to5h_400+128+40.pth'
+    mlp_model_dic = data_base + '/models/mlp_regressor_80to5_1200+200+80_v1.pth'
     
     # 1. 读原始 DataFrame
     data_path = data_base + "/type6/Nasdaq_qqq_align_labeled_base_evaluated_normST1.pkl"
@@ -81,45 +81,48 @@ def main():
 
     # 8. 加载模型
     encoders  = load_encoders(lstm_model, device)
-    mlp_model = MLPRegressor(
-        input_dim=80*5,
-        hidden_dim1=600,
-        hidden_dim2=128,
-        hidden_dim3=40,
-        output_dim=5
-    ).to(device)
+    mlp_model = MLPRegressor(80*5, 1200, 200, 80, 5).to(device)
     mlp_model.load_state_dict(torch.load(mlp_model_dic, map_location=device))
     mlp_model.eval()
 
+    # 预先计算好 df 要写入的全局偏移列表
+    df_indices = [i + offset for i in ds_indices]
+
     # 9. 推理
-    for batch_idx, batch in enumerate(loader):
-        # batch 会是一个 tuple: (close_1,…,close_1380, volume_1,…,volume_1380, evaluation)
-        close_1, close_10, close_60, close_240, close_1380, \
-        volume_1, volume_10, volume_60, volume_240, volume_1380, _ = batch
+    with torch.no_grad():
+        for batch_idx, batch in enumerate(
+                tqdm(loader, desc="Inference", total=len(loader))):
+            # 解包并搬到 device
+            close_1, close_10, close_60, close_240, close_1380, \
+            vol_1,   vol_10,   vol_60,   vol_240,   vol_1380, _ = batch
+            closes = [close_1.to(device), close_10.to(device),
+                      close_60.to(device), close_240.to(device),
+                      close_1380.to(device)]
+            vols   = [vol_1.to(device),   vol_10.to(device),
+                      vol_60.to(device),  vol_240.to(device),
+                      vol_1380.to(device)]
 
-        # 逐样本（当 batch_size>1 时也能工作）
-        B = close_1.shape[0]
-        for b in range(B):
-            encs = []
-            for ei, enc in enumerate(encoders):
-                # 取出对应尺度下的 close & volume
-                close_seq = [close_1, close_10, close_60, close_240, close_1380][ei][b].to(device)
-                vol_seq   = [volume_1, volume_10, volume_60, volume_240, volume_1380][ei][b].to(device)
-                # 拼成 [1, seq_len, 2]
-                inp = torch.stack([close_seq, vol_seq], dim=-1).unsqueeze(0)
-                encs.append(enc.encoder(inp))
-            # 拼接五个编码，再过 MLP
-            mlp_in = torch.cat(encs, dim=1)  # [1, 200]
-            pred   = mlp_model(mlp_in)       # [1,5]
-            pred   = pred.detach().cpu().numpy().reshape(-1)
+            # 批量编码：得到 5 个 [B, 80] 的张量
+            encoded_list = []
+            for enc, c, v in zip(encoders, closes, vols):
+                inp = torch.stack([c, v], dim=-1)       # [B, seq_len, 2]
+                encoded = enc.encoder(inp)             # [B, 80]
+                encoded_list.append(encoded)
 
-            # 计算回原 DataFrame 的行号，并写入
-            df_idx = ds_indices[batch_idx*args.batch_size + b] + offset
+            # 拼接 & MLP 推理
+            mlp_in = torch.cat(encoded_list, dim=1)     # [B, 400]
+            preds  = mlp_model(mlp_in)                  # [B,   5]
+            preds_np = preds.cpu().numpy()              # numpy [B,5]
+
+            # 批量写回 DataFrame
+            start = batch_idx * args.batch_size
+            end   = start + preds_np.shape[0]
             for j in range(5):
-                df.at[df_idx, f'prediction{j+1}'] = float(pred[j])
+                # 一次性给 prediction{j+1} 这一整段赋值
+                df.loc[df_indices[start:end],f'prediction{j+1}'] = preds_np[:, j]
 
-    # 10. 保存带预测的新 DataFrame
-    out_path = data_base + "/type6/Nasdaq_qqq_align_labeled_base_evaluated_normST1_with_predictions_h120to80_2LSTM.pkl"
+    # 保存结果
+    out_path = data_base + "/type6/Nasdaq_qqq_align_labeled_base_evaluated_normST1_with_predictions_120to80_2LSTM_future1.pkl"
     df.to_pickle(out_path)
     print(f"推理完成，结果保存在：{out_path}")
 

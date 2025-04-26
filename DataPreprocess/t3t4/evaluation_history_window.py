@@ -106,12 +106,33 @@ class EvaluationWindow:
 
 # 使用示例
 if __name__ == "__main__":
-    data_base = '/Users/wentianwang/Library/CloudStorage/GoogleDrive-littlenova223@gmail.com/My Drive/quantum_t_data'
+    #data_base = '/Users/wentianwang/Library/CloudStorage/GoogleDrive-littlenova223@gmail.com/My Drive/quantum_t_data'
+    data_base = 'D:/quantum/quantum_t_data/quantum_t_data'
     T3_data_path = data_base + '/type3/Nasdaq_qqq_align_labeled_base.pkl'
     df = pd.read_pickle(T3_data_path)
     #df = df.head(int(len(df) * 0.01))
     
-
+    # 初始化 EvaluationWindow 类
+    evaluation_window_480 = EvaluationWindow(df, evaluation_length=-480)
+    evaluation_window_480.move_to_end()
+    df.rename(columns={'evaluation': 'evaluation_480h'}, inplace=True)
+    # 初始化 EvaluationWindow 类
+    evaluation_window_300 = EvaluationWindow(df, evaluation_length=-300)
+    evaluation_window_300.move_to_end()
+    df.rename(columns={'evaluation': 'evaluation_300h'}, inplace=True)
+    # 初始化 EvaluationWindow 类
+    evaluation_window_120 = EvaluationWindow(df, evaluation_length=-120)
+    evaluation_window_120.move_to_end()
+    df.rename(columns={'evaluation': 'evaluation_120h'}, inplace=True)
+    # 初始化 EvaluationWindow 类
+    evaluation_window_60 = EvaluationWindow(df, evaluation_length=-60)
+    evaluation_window_60.move_to_end()
+    df.rename(columns={'evaluation': 'evaluation_60h'}, inplace=True)
+    # 初始化 EvaluationWindow 类
+    evaluation_window_30 = EvaluationWindow(df, evaluation_length=-30)
+    evaluation_window_30.move_to_end()
+    df.rename(columns={'evaluation': 'evaluation_30h'}, inplace=True)
+    
     # 初始化 EvaluationWindow 类
     evaluation_window_480 = EvaluationWindow(df, evaluation_length=480)
     evaluation_window_480.move_to_end()
@@ -133,26 +154,7 @@ if __name__ == "__main__":
     evaluation_window_30.move_to_end()
     df.rename(columns={'evaluation': 'evaluation_30'}, inplace=True)
 
-    # 初始化 EvaluationWindow 类
-    evaluation_window_480 = EvaluationWindow(df, evaluation_length=480)
-    evaluation_window_480.move_to_end()
-    df.rename(columns={'evaluation': 'evaluation_480h'}, inplace=True)
-    # 初始化 EvaluationWindow 类
-    evaluation_window_300 = EvaluationWindow(df, evaluation_length=300)
-    evaluation_window_300.move_to_end()
-    df.rename(columns={'evaluation': 'evaluation_300h'}, inplace=True)
-    # 初始化 EvaluationWindow 类
-    evaluation_window_120 = EvaluationWindow(df, evaluation_length=120)
-    evaluation_window_120.move_to_end()
-    df.rename(columns={'evaluation': 'evaluation_120h'}, inplace=True)
-    # 初始化 EvaluationWindow 类
-    evaluation_window_60 = EvaluationWindow(df, evaluation_length=60)
-    evaluation_window_60.move_to_end()
-    df.rename(columns={'evaluation': 'evaluation_60h'}, inplace=True)
-    # 初始化 EvaluationWindow 类
-    evaluation_window_30 = EvaluationWindow(df, evaluation_length=30)
-    evaluation_window_30.move_to_end()
-    df.rename(columns={'evaluation': 'evaluation_30h'}, inplace=True)
+
     # 打印修改后的 DataFrame
     print(df)
     T4_data_path = data_base + '/type4/Nasdaq_qqq_align_labeled_base_evaluated_history.pkl'

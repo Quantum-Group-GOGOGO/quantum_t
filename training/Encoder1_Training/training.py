@@ -62,8 +62,8 @@ if __name__ == "__main__":
     encoded_size = 80
     num_heads = 0
     transformer_layers = 0
-    num_epochs = 5
-    learning_rate = 0.001
+    num_epochs = 10
+    learning_rate = 0.0001
 
     # 实例化模型
     #model = LSTMAutoencoder(input_size, hidden_size, num_layers, encoded_size)
@@ -129,6 +129,6 @@ if __name__ == "__main__":
             print(f'Epoch [{epoch+1}/{num_epochs}], Test Loss (Random Sample): {test_loss:.8f}')
 
         # 保存模型
-        model_path = data_base + '/models/lstm1_encoder/LSTMAutoencoder_trained_stdnorm_120to80_s3_2LSTM.pth'
+        model_path = data_base + '/models/lstm1_encoder/LSTMAutoencoder_trained_stdnorm_h120to80_s3_2LSTM.pth'
         torch.save(model.state_dict(), model_path)
         print(f"模型已保存到: {model_path}")

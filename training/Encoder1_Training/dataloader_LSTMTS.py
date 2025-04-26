@@ -27,7 +27,7 @@ class TimeSeriesLSTMTSDataset(Dataset):
         self.other_data = df[other_features].values.astype(np.float32)
 
         # 提取评测数据并转换为 float32
-        evaluation_columns = ['evaluation_30', 'evaluation_60', 'evaluation_120', 'evaluation_300', 'evaluation_480']
+        evaluation_columns = ['evaluation_30h', 'evaluation_60h', 'evaluation_120h', 'evaluation_300h', 'evaluation_480h']
         evaluation_index = [col for col in df.columns if col in evaluation_columns]
         self.evaluation_data = df[evaluation_index].values.astype(np.float32)
 

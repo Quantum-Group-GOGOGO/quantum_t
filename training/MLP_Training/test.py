@@ -8,9 +8,9 @@ from MLP import MLPRegressor
 import pandas as pd
 
 # **超参数**
-input_dim = 40 * 5  # 输入维度（40 × 5）
+input_dim = 80 * 5  # 输入维度（40 × 5）
 output_dim = 5  # 输出 5 个 evaluation 值
-hidden_dim1 = 400  # 隐藏层大小
+hidden_dim1 = 600  # 隐藏层大小
 hidden_dim2 = 128  # 隐藏层大小
 hidden_dim3 = 40  # 隐藏层大小
 num_epochs = 20
@@ -37,7 +37,7 @@ test_dataloader = DataLoader(test_dataset, batch_size=1, shuffle=True, num_worke
 
 # **加载 MLP 模型**
 mlp_model = MLPRegressor(input_dim, hidden_dim1, hidden_dim2, hidden_dim3, output_dim).to(device)
-mlp_model_path = data_base + '/models/mlp_regressor.pth'
+mlp_model_path = data_base + '/models/mlp_regressor_80to5h_400+128+40.pth'
 mlp_model.load_state_dict(torch.load(mlp_model_path))
 mlp_model.eval()
 
@@ -49,18 +49,18 @@ volume_1, volume_10, volume_60, volume_240, volume_1380 = volume_1.to(device), v
             
 # 定义模型参数
 input_size = 2  # 每个时间步的特征数量（两个变量：Close_1 和 Volume_1）
-hidden_size = 60
+hidden_size = 120
 num_layers = 2
-encoded_size = 40
-num_heads = 2
-transformer_layers = 1
+encoded_size = 80
+num_heads = 0
+transformer_layers = 0
 encoder1 = LSTMAutoencoder(input_size, hidden_size, num_layers, encoded_size, num_heads, transformer_layers).to(device)
 encoder2 = LSTMAutoencoder(input_size, hidden_size, num_layers, encoded_size, num_heads, transformer_layers).to(device)
 encoder3 = LSTMAutoencoder(input_size, hidden_size, num_layers, encoded_size, num_heads, transformer_layers).to(device)
 encoder4 = LSTMAutoencoder(input_size, hidden_size, num_layers, encoded_size, num_heads, transformer_layers).to(device)
 encoder5 = LSTMAutoencoder(input_size, hidden_size, num_layers, encoded_size, num_heads, transformer_layers).to(device)
 
-model_path = data_base + '/models/lstm1_encoder/LSTMAutoencoder_trained_stdnorm_120to40_s2_tf2-1.pth'
+model_path = data_base + '/models/lstm1_encoder/LSTMAutoencoder_trained_stdnorm_120to80_s3_2LSTM.pth'
 state_dict = torch.load(model_path, map_location=device, weights_only=True)
 encoder1.load_state_dict(state_dict, strict=True)
 encoder2.load_state_dict(state_dict, strict=True)

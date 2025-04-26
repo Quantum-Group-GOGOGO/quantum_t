@@ -25,12 +25,12 @@ class WeightedMSELoss(nn.Module):
         eps = 1e-6
         close_range  = close_target.max() - close_target.min() + eps
         volume_range = volume_target.max()  - volume_target.min() + eps
-        self.close_weight=volume_range/(close_range+volume_range)
-        self.volume_weight=close_range/(close_range+volume_range)
+        close_weight=volume_range/(close_range+volume_range)
+        volume_weight=close_range/(close_range+volume_range)
 
         # 计算加权的损失
-        close_loss_weighted = close_loss * self.close_weight * time_weights * 4
-        volume_loss_weighted = volume_loss * self.volume_weight * time_weights
+        close_loss_weighted = close_loss * close_weight * time_weights * 4
+        volume_loss_weighted = volume_loss * volume_weight * time_weights
 
         # 计算总损失（对 batch 和序列长度求平均）
         total_loss = (close_loss_weighted + volume_loss_weighted).mean()
