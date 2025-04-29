@@ -43,7 +43,7 @@ mlp_model.eval()
 
 # **获取一个测试样本**
 (close_1, close_10, close_60, close_240, close_1380,
- volume_1, volume_10, volume_60, volume_240, volume_1380, evaluation_values) = next(iter(test_dataloader))
+ volume_1, volume_10, volume_60, volume_240, volume_1380, evaluation_values, auxiliary_values) = next(iter(test_dataloader))
 close_1, close_10, close_60, close_240, close_1380 = close_1.to(device), close_10.to(device), close_60.to(device), close_240.to(device), close_1380.to(device)
 volume_1, volume_10, volume_60, volume_240, volume_1380 = volume_1.to(device), volume_10.to(device), volume_60.to(device), volume_240.to(device), volume_1380.to(device)
             
@@ -80,5 +80,6 @@ mlp_input = torch.cat([encoded1, encoded2, encoded3, encoded4, encoded5], dim=1)
 predicted_evaluation = mlp_model(mlp_input)
 
 # **打印真实值 vs 预测值**
+print(test_df.columns)
 print("真实 Evaluation:", evaluation_values.cpu().numpy())
 print("预测 Evaluation:", predicted_evaluation.detach().cpu().numpy())

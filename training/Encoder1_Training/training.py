@@ -82,7 +82,7 @@ if __name__ == "__main__":
         with tqdm(dataloader, desc=f"Epoch [{epoch+1}/{num_epochs}]", unit="batch") as tepoch:
             for batch in tepoch:
                 close_1, close_10, close_60, close_240, close_1380, \
-                volume_1, volume_10, volume_60, volume_240, volume_1380, evaluation = batch
+                volume_1, volume_10, volume_60, volume_240, volume_1380, evaluation, auxiliary = batch
                 sample_close_1 = close_1.to(device)
                 sample_volume_1 = volume_1.to(device)
                 # 合并输入特征（close 和 volume）
@@ -113,7 +113,7 @@ if __name__ == "__main__":
         model.eval()  # 切换到评估模式
         with torch.no_grad():
             # 从测试集中获取一个样本
-            sample_close_1, sample_close_10, sample_close_60, sample_close_240, sample_close_1380,sample_volume_1, sample_volume_10, sample_volume_60, sample_volume_240, sample_volume_1380, sample_evaluation_data_current = next(iter(test_dataloader))
+            sample_close_1, sample_close_10, sample_close_60, sample_close_240, sample_close_1380,sample_volume_1, sample_volume_10, sample_volume_60, sample_volume_240, sample_volume_1380, sample_evaluation_data_current, sample_auxiliary_data_current = next(iter(test_dataloader))
 
             # 把它们都搬到 GPU
             sample_close_1 = sample_close_1.to(device)

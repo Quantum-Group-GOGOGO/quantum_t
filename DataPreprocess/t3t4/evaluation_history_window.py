@@ -82,7 +82,6 @@ class EvaluationWindow:
 
     def move(self):
         self.calculate_current_length()
-        self.df.at[self.current_index, 'length'] = self.current_length
         if self.current_length > 0:
             self.calculate_weight_from_start()
             self.calculate_diff_from_start()
@@ -132,7 +131,7 @@ if __name__ == "__main__":
     evaluation_window_30 = EvaluationWindow(df, evaluation_length=-30)
     evaluation_window_30.move_to_end()
     df.rename(columns={'evaluation': 'evaluation_30h'}, inplace=True)
-    
+
     # 初始化 EvaluationWindow 类
     evaluation_window_480 = EvaluationWindow(df, evaluation_length=480)
     evaluation_window_480.move_to_end()

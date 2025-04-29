@@ -21,15 +21,15 @@ class TimeSeriesLSTMTSDataset(Dataset):
         self.volume_240 = df['volume_240'].values.astype(np.float32)
         self.volume_1380 = df['volume_1380'].values.astype(np.float32)
 
-        # 提取其他数据并转换为 float32
-        excluded_columns = ['close', 'close_10', 'close_60', 'close_240', 'close_1380', 'volume', 'volume_10', 'volume_60', 'volume_240', 'volume_1380', 'evaluation_30', 'evaluation_60', 'evaluation_120', 'evaluation_300', 'evaluation_480']
-        other_features = [col for col in df.columns if col not in excluded_columns]
-        self.other_data = df[other_features].values.astype(np.float32)
-
         # 提取评测数据并转换为 float32
         evaluation_columns = ['evaluation_30h', 'evaluation_60h', 'evaluation_120h', 'evaluation_300h', 'evaluation_480h']
         evaluation_index = [col for col in df.columns if col in evaluation_columns]
         self.evaluation_data = df[evaluation_index].values.astype(np.float32)
+
+        # 提取其他数据并转换为 float32
+        auxiliary_columns = ['sinT', 'cosT', 'pre_event', 'post_event', 'pre_break', 'post_break', 'week_fraction_sin', 'week_fraction_cos', 'absolute_time']
+        auxiliary_index = [col for col in df.columns if col in auxiliary_columns]
+        self.auxiliary_data = df[auxiliary_index].values.astype(np.float32)
 
         self.sequence_length_1 = sequence_length_1
         self.sequence_length_10 = sequence_length_10
@@ -68,13 +68,13 @@ class TimeSeriesLSTMTSDataset(Dataset):
         volume_1380 = self.volume_1380[end_idx - (self.sequence_length_1380 - 1) * 1380:end_idx + 1:1380]
 
         # 加载协变量
-        other_data_current = self.other_data[end_idx]
+        auxiliary_data_current = self.auxiliary_data[end_idx]
 
         #加评测值
         evaluation_data_current = self.evaluation_data[end_idx]
 
         return (close_1, close_10, close_60, close_240, close_1380,
-                volume_1, volume_10, volume_60, volume_240, volume_1380, evaluation_data_current)
+                volume_1, volume_10, volume_60, volume_240, volume_1380, evaluation_data_current, auxiliary_data_current)
     
     def normalize_series(self, series):
         # 使用最后一个点作为基准进行归一化

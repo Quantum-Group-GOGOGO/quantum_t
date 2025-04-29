@@ -18,7 +18,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 pretrain_path = data_base + '/models/mlp_regressor_80to5_400+128+40.pth'
 loss_file_path = data_base + '/models/training_loss.txt'
-mlp_model_path = data_base + '/models/mlp_regressor_80to5_1200+200+80_v1.pth'
+mlp_model_path = data_base + '/models/mlp_regressor_80to5_1200+400+80_v1.pth'
 lstm_model_path = data_base + '/models/lstm1_encoder/LSTMAutoencoder_trained_stdnorm_120to80_s3_2LSTM.pth'
 read_from_pretrained=False
 # **统一时间序列长度**
@@ -77,13 +77,13 @@ encoders = [encoder1, encoder2, encoder3, encoder4, encoder5]
 input_dim = 80 * 5  # 输入维度（40 × 5）
 output_dim = 5  # 输出 5 个 evaluation 值
 hidden_dim1 = 1200  # 隐藏层大小
-hidden_dim2 = 200  # 隐藏层大小
+hidden_dim2 = 400  # 隐藏层大小
 hidden_dim3 = 80  # 隐藏层大小
 num_epochs = 1
 batch_size = 64
 learning_rate = 0.0001
 adam_learning_rate = 0.0001
-l2_lambda=1e-4
+l2_lambda=1e-2
 
 
 # 将学习率设为一个可训练的变量
@@ -123,7 +123,7 @@ def validation_loss(encoders, mlp_model, val_loader, device):
     with torch.no_grad():
         for batch in val_loader:
             close_1, close_10, close_60, close_240, close_1380, \
-            volume_1, volume_10, volume_60, volume_240, volume_1380, evaluation = batch
+            volume_1, volume_10, volume_60, volume_240, volume_1380, evaluation, auxiliary = batch
 
             # to device
             close_1 = close_1.to(device);   volume_1 = volume_1.to(device)
@@ -169,7 +169,7 @@ for epoch in range(num_epochs):
     with tqdm(train_dataloader, desc=f"Epoch {epoch+1}/{num_epochs}") as tbar:
         for batch in tbar:
             close_1, close_10, close_60, close_240, close_1380, \
-            volume_1, volume_10, volume_60, volume_240, volume_1380, evaluation = batch
+            volume_1, volume_10, volume_60, volume_240, volume_1380, evaluation, auxiliary = batch
 
             # 发送到 GPU 或 CPU
             close_1, close_10, close_60, close_240, close_1380 = close_1.to(device), close_10.to(device), close_60.to(device), close_240.to(device), close_1380.to(device)
@@ -223,11 +223,12 @@ for epoch in range(num_epochs):
                 with open(data_base + '/models/training_loss.txt', 'a') as f:
                     f.write(f"{avg_loss}\n")
                 accumulated_loss = 0.0  # 重置累计 loss
-    val_loss = validation_loss(encoders, mlp_model, val_loader, device)
+    
     print(f'Epoch [{epoch+1}/{num_epochs}], Loss: {total_loss / len(train_dataloader):.6f}')
 
     # **保存 MLP 模型**
     
     torch.save(mlp_model.state_dict(), mlp_model_path)
 print("训练完成，MLP 模型已保存！")
-
+val_loss = validation_loss(encoders, mlp_model, val_loader, device)
+print(f'val_Loss: {val_loss:.6f}')
