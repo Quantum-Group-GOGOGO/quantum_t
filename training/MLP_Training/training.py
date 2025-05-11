@@ -223,6 +223,8 @@ for epoch in range(num_epochs):
                 with open(data_base + '/models/training_loss.txt', 'a') as f:
                     f.write(f"{avg_loss}\n")
                 accumulated_loss = 0.0  # 重置累计 loss
+                val_loss = validation_loss(encoders, mlp_model, val_loader, device)
+                print(f'val_Loss: {val_loss:.6f}')
     
     print(f'Epoch [{epoch+1}/{num_epochs}], Loss: {total_loss / len(train_dataloader):.6f}')
 
@@ -230,5 +232,4 @@ for epoch in range(num_epochs):
     
     torch.save(mlp_model.state_dict(), mlp_model_path)
 print("训练完成，MLP 模型已保存！")
-val_loss = validation_loss(encoders, mlp_model, val_loader, device)
-print(f'val_Loss: {val_loss:.6f}')
+
