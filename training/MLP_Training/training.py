@@ -27,7 +27,7 @@ batch_size = 32
 # **加载训练数据**
 train_df = pd.read_pickle(train_path)
 train_dataset = TimeSeriesLSTMTSDataset(train_df, sequence_length, sequence_length, sequence_length, sequence_length, sequence_length)
-train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=0)
+train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False, num_workers=0)
 
 val_df = pd.read_pickle(validation_path)
 val_dataset = TimeSeriesLSTMTSDataset(val_df,sequence_length, sequence_length, sequence_length,sequence_length, sequence_length)
@@ -224,7 +224,7 @@ for epoch in range(num_epochs):
                     f.write(f"{avg_loss}\n")
                 accumulated_loss = 0.0  # 重置累计 loss
                 val_loss = validation_loss(encoders, mlp_model, val_loader, device)
-                print(f'val_Loss: {val_loss:.6f}')
+                print(f' val_Loss: {val_loss:.6f}')
     
     print(f'Epoch [{epoch+1}/{num_epochs}], Loss: {total_loss / len(train_dataloader):.6f}')
 
