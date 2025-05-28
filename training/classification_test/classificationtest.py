@@ -10,12 +10,12 @@ from models.MLP import MLPRegressor
 import pandas as pd
 from tqdm import tqdm
 
-
 # **数据集路径**
 #data_base = 'D:/quantum/quantum_t_data/quantum_t_data'
 #data_base = '/Users/wentianwang/Library/CloudStorage/GoogleDrive-littlenova223@gmail.com/My Drive/quantum_t_data'
 train_path = data_base + '/type6/Nasdaq_qqq_align_labeled_base_evaluated_normST1_train.pkl'
 validation_path = data_base + '/type6/Nasdaq_qqq_align_labeled_base_evaluated_normST1_validation.pkl'
+data_path = data_base + "/type6/Nasdaq_qqq_align_labeled_base_evaluated_normST1.pkl"
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 pretrain_path = data_base + '/models/mlp_regressor_80to5_400+128+40.pth'
