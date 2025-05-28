@@ -4,6 +4,7 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 from dataloader_LSTMTS import TimeSeriesLSTMTSDataset
 from LSTM1 import LSTMAutoencoder  # 只加载 Encoder
+from auxprojector import AuxAutoencoder
 from MLP import MLPRegressor
 import pandas as pd
 from tqdm import tqdm
@@ -20,6 +21,7 @@ pretrain_path = data_base + '/models/mlp_regressor_80to5_400+128+40.pth'
 loss_file_path = data_base + '/models/training_loss.txt'
 mlp_model_path = data_base + '/models/mlp_regressor_80to5_1200+400+80_v1.pth'
 lstm_model_path = data_base + '/models/lstm1_encoder/LSTMAutoencoder_trained_stdnorm_120to80_s3_2LSTM.pth'
+aux_encoder_path = data_base + '/models/aux_projector_encoder.pth'
 read_from_pretrained=False
 # **统一时间序列长度**
 sequence_length = 120
@@ -27,7 +29,7 @@ batch_size = 32
 # **加载训练数据**
 train_df = pd.read_pickle(train_path)
 train_dataset = TimeSeriesLSTMTSDataset(train_df, sequence_length, sequence_length, sequence_length, sequence_length, sequence_length)
-train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False, num_workers=0)
+train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=0)
 
 val_df = pd.read_pickle(validation_path)
 val_dataset = TimeSeriesLSTMTSDataset(val_df,sequence_length, sequence_length, sequence_length,sequence_length, sequence_length)
@@ -73,18 +75,36 @@ for param in encoder5.parameters():
     param.requires_grad = False
 encoders = [encoder1, encoder2, encoder3, encoder4, encoder5]
 
+proj_dim = 100  # 投影后维度
+
+aux_autoencoder = AuxAutoencoder(in_dim=9, hidden_dim=64, proj_dim=proj_dim).to(device)
+aux_state = torch.load(aux_encoder_path, map_location=device, weights_only=True)
+aux_autoencoder.load_state_dict(aux_state, strict=True)
+aux_autoencoder.eval()
+for p in aux_autoencoder.parameters():
+    p.requires_grad = False
+aux_encoder= aux_autoencoder.encoder
+
 # **超参数**
 input_dim = 80 * 5  # 输入维度（40 × 5）
-output_dim = 5  # 输出 5 个 evaluation 值
+output_dim = 3  # 输出 5 个 evaluation 值
 hidden_dim1 = 1200  # 隐藏层大小
 hidden_dim2 = 400  # 隐藏层大小
 hidden_dim3 = 80  # 隐藏层大小
-num_epochs = 1
+num_epochs = 10
 batch_size = 64
 learning_rate = 0.0001
 adam_learning_rate = 0.0001
-l2_lambda=1e-2
+l2_segment=1.0e-3
+def fx(a,b):
+    if a==0:
+        return 0
+    else:
+        return 0.5**b
 
+#l2_lambda=2.0e-3+l2_segment*(fx(0,0)+fx(1,1)+fx(0,2)+fx(0,3)+fx(1,4)+fx(0,5)+fx(0,6)+fx(1,7)+fx(1,8)+fx(1,9)+fx(1,10))
+l2_lambda=1.0e-2
+print(f' l2_lambda: {l2_lambda:.6f}')
 
 # 将学习率设为一个可训练的变量
 lr_meta = torch.tensor(learning_rate, requires_grad=True, device=device)
@@ -92,7 +112,7 @@ lr_meta = torch.tensor(learning_rate, requires_grad=True, device=device)
 meta_optimizer = optim.Adam([lr_meta], lr=1e-3)
 
 # 实例化 MLP
-mlp_model = MLPRegressor(input_dim, hidden_dim1, hidden_dim2, hidden_dim3, output_dim).to(device)
+mlp_model = MLPRegressor(input_dim+proj_dim, hidden_dim1, hidden_dim2, hidden_dim3, output_dim).to(device)
 
 # 预训练模型文件路径
 
@@ -104,11 +124,10 @@ else:
     print(f'No pretrained file found at {pretrain_path}, training from scratch.')
 
 # 内层优化器：用于更新 mlp_model 的参数，初始学习率由 lr_meta 的值给出
-inner_optimizer = optim.Adam(mlp_model.parameters(), lr=learning_rate, weight_decay=l2_lambda)
 
-
-criterion = nn.MSELoss()  # 均方误差损失
-optimizer = optim.Adam(mlp_model.parameters(), lr=adam_learning_rate)
+#criterion = nn.MSELoss()  # 均方误差损失
+criterion =  nn.CrossEntropyLoss()
+optimizer = optim.Adam(mlp_model.parameters(), lr=adam_learning_rate, weight_decay=l2_lambda)
 
 # 新增全局 batch 计数器和累计损失变量
 global_batch_count = 0
@@ -124,7 +143,8 @@ def validation_loss(encoders, mlp_model, val_loader, device):
         for batch in val_loader:
             close_1, close_10, close_60, close_240, close_1380, \
             volume_1, volume_10, volume_60, volume_240, volume_1380, evaluation, auxiliary = batch
-
+            evaluation = evaluation.squeeze(dim=1)
+            evaluation = evaluation.long() 
             # to device
             close_1 = close_1.to(device);   volume_1 = volume_1.to(device)
             close_10 = close_10.to(device); volume_10 = volume_10.to(device)
@@ -132,6 +152,7 @@ def validation_loss(encoders, mlp_model, val_loader, device):
             close_240 = close_240.to(device); volume_240 = volume_240.to(device)
             close_1380 = close_1380.to(device); volume_1380 = volume_1380.to(device)
             evaluation = evaluation.to(device)
+            auxiliary = auxiliary.to(device)
 
             # 编码
             encoded = []
@@ -141,6 +162,10 @@ def validation_loss(encoders, mlp_model, val_loader, device):
                 x = torch.stack([c, v], dim=-1)
                 encoded.append(enc.encoder(x))
             mlp_input = torch.cat(encoded, dim=1)
+            
+            # Aux 投影器
+            aux_feat = aux_encoder(auxiliary)      # [B, 100]
+            mlp_input = torch.cat([mlp_input, aux_feat], dim=1)  # [B, 500]
 
             # 预测 & loss
             pred = mlp_model(mlp_input)
@@ -161,6 +186,11 @@ def validation_loss(encoders, mlp_model, val_loader, device):
 with open(loss_file_path, 'w') as f:
     f.write('')
 
+
+val_loss = validation_loss(encoders, mlp_model, val_loader, device)
+print(f' val_Loss: {val_loss:.6f}')
+#7.785033
+
 # **训练循环**
 for epoch in range(num_epochs):
     mlp_model.train()
@@ -170,12 +200,14 @@ for epoch in range(num_epochs):
         for batch in tbar:
             close_1, close_10, close_60, close_240, close_1380, \
             volume_1, volume_10, volume_60, volume_240, volume_1380, evaluation, auxiliary = batch
-
+            evaluation = evaluation.squeeze(dim=1)
+            evaluation = evaluation.long() 
             # 发送到 GPU 或 CPU
             close_1, close_10, close_60, close_240, close_1380 = close_1.to(device), close_10.to(device), close_60.to(device), close_240.to(device), close_1380.to(device)
             volume_1, volume_10, volume_60, volume_240, volume_1380 = volume_1.to(device), volume_10.to(device), volume_60.to(device), volume_240.to(device), volume_1380.to(device)
             
             evaluation = evaluation.to(device)
+            auxiliary = auxiliary.to(device)
 
             # 计算 LSTM 编码器的输出
             encoded1 = encoder1.encoder(torch.stack([close_1, volume_1], dim=-1))
@@ -186,7 +218,11 @@ for epoch in range(num_epochs):
 
             # 拼接 5 组 LSTM 输出
             mlp_input = torch.cat([encoded1, encoded2, encoded3, encoded4, encoded5], dim=1).to(device)
-
+            
+            # auxiliary 投影并拼接
+            aux_feat = aux_encoder(auxiliary)      # [B,100]
+            mlp_input = torch.cat([mlp_input, aux_feat], dim=1)  # [B,500]
+            
             # 计算 MLP 输出
             pred = mlp_model(mlp_input)
 
@@ -217,19 +253,20 @@ for epoch in range(num_epochs):
                 
                 # 将内层优化器的学习率更新为 lr_meta 新的数值
                 new_lr = lr_meta.item()
-                for param_group in inner_optimizer.param_groups:
+                for param_group in optimizer.param_groups:
                     param_group['lr'] = new_lr
                 # 以追加模式写入文件，每次写入一行
                 with open(data_base + '/models/training_loss.txt', 'a') as f:
                     f.write(f"{avg_loss}\n")
                 accumulated_loss = 0.0  # 重置累计 loss
-                val_loss = validation_loss(encoders, mlp_model, val_loader, device)
-                print(f' val_Loss: {val_loss:.6f}')
+                #val_loss = validation_loss(encoders, mlp_model, val_loader, device)
+                #print(f' val_Loss: {val_loss:.6f}')
     
     print(f'Epoch [{epoch+1}/{num_epochs}], Loss: {total_loss / len(train_dataloader):.6f}')
 
     # **保存 MLP 模型**
-    
+    val_loss = validation_loss(encoders, mlp_model, val_loader, device)
+    print(f' val_Loss: {val_loss:.6f}')
     torch.save(mlp_model.state_dict(), mlp_model_path)
 print("训练完成，MLP 模型已保存！")
 

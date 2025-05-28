@@ -22,7 +22,9 @@ class TimeSeriesLSTMTSDataset(Dataset):
         self.volume_1380 = df['volume_1380'].values.astype(np.float32)
 
         # 提取评测数据并转换为 float32
-        evaluation_columns = ['evaluation_30', 'evaluation_60', 'evaluation_120', 'evaluation_300', 'evaluation_480']
+        #evaluation_columns = ['evaluation_30', 'evaluation_60', 'evaluation_120', 'evaluation_300', 'evaluation_480']
+        #evaluation_columns = ['tags_in', 'tags_flat', 'tags_de']
+        evaluation_columns = ['tag']
         evaluation_index = [col for col in df.columns if col in evaluation_columns]
         self.evaluation_data = df[evaluation_index].values.astype(np.float32)
 

@@ -34,9 +34,9 @@ def load_encoders(lstm_path, device):
 def main():
     parser = argparse.ArgumentParser(description="LSTM+MLP 回归模型推理脚本")
     parser.add_argument('--sequence_length', type=int, default=120,
-                        help="训练时使用的序列长度（默认为 120）")
+                        help="训练时使用的序列长度（默认为 120)")
     parser.add_argument('--batch_size', type=int, default=64,
-                        help="推理时的 batch size（默认为 1，逐行预测）")
+                        help="推理时的 batch size (默认为 1, 逐行预测)")
     args = parser.parse_args()
     
     data_base = 'D:\quantum\quantum_t_data\quantum_t_data'
@@ -81,7 +81,7 @@ def main():
 
     # 8. 加载模型
     encoders  = load_encoders(lstm_model, device)
-    mlp_model = MLPRegressor(80*5, 1200, 200, 80, 5).to(device)
+    mlp_model = MLPRegressor(80*5+100, 1200, 400, 80, 5).to(device)
     mlp_model.load_state_dict(torch.load(mlp_model_dic, map_location=device))
     mlp_model.eval()
 
@@ -94,7 +94,7 @@ def main():
                 tqdm(loader, desc="Inference", total=len(loader))):
             # 解包并搬到 device
             close_1, close_10, close_60, close_240, close_1380, \
-            vol_1,   vol_10,   vol_60,   vol_240,   vol_1380, _ = batch
+            vol_1,   vol_10,   vol_60,   vol_240,   vol_1380, _, auxiliary = batch
             closes = [close_1.to(device), close_10.to(device),
                       close_60.to(device), close_240.to(device),
                       close_1380.to(device)]

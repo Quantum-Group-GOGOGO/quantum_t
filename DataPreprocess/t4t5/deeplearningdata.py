@@ -5,7 +5,7 @@ from tqdm import tqdm
 #data_base='/Users/wentianwang/Library/CloudStorage/GoogleDrive-littlenova223@gmail.com/My Drive/quantum_t_data'
 data_base = 'D:/quantum/quantum_t_data/quantum_t_data'
 #T4_data_path=data_base+'/type4/Nasdaq_qqq_align_labeled_base_evaluated.pkl'
-T4_data_path = data_base + '/type4/Nasdaq_qqq_align_labeled_base_evaluated_history.pkl'
+T4_data_path = data_base + '/type4/Nasdaq_qqq_align_labeled_base_evaluated_history_tag.pkl'
 
 T5_data_path=data_base+'/type5/Nasdaq_qqq_align_labeled_base_evaluated.pkl'
 T5_data_path_test=data_base+'/type5/Nasdaq_qqq_align_labeled_base_evaluated_test.pkl'
@@ -53,6 +53,11 @@ df['volume_60'] = df['volume'].rolling(window=60, min_periods=1).mean()
 df['volume_240'] = df['volume'].rolling(window=240, min_periods=1).mean()
 df['volume_1380'] = df['volume'].rolling(window=1830, min_periods=1).mean()
 
+#算平均价位
+df['4average'] = (df['open'] + df['high'] + df['low'] + df['close']) / 4
+df['2ocaverage'] = (df['open'] + df['close']) / 2
+df['2hlaverage'] = (df['high'] + df['low']) / 2
+
 #算年平均
 #df['volume_YEAR'] = df['volume'].rolling(window=347760, min_periods=1).mean()
 window_size = 347760
@@ -86,7 +91,7 @@ df['close_1380'] = df['close'].rolling(window=1830, min_periods=1).mean()
 
 
 # 丢弃 'datetime' 列
-df = df.drop(columns=['datetime','open','high','low'], errors='ignore')
+df = df.drop(columns=['datetime'], errors='ignore')
 # 小型切片用于测试
 print(df.head())
 # 找到第一个 NaN 的位置
