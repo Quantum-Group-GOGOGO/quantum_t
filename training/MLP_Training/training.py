@@ -3,10 +3,10 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
-from dataloaders.dataloader_LSTMTS import TimeSeriesLSTMTSDataset
-from models.LSTM1 import LSTMAutoencoder  # 只加载 Encoder
-from models.auxprojector import AuxAutoencoder
-from models.MLP import MLPRegressor
+from dataloader_LSTMTS import TimeSeriesLSTMTSDataset
+from LSTM1 import LSTMAutoencoder  # 只加载 Encoder
+from auxprojector import AuxAutoencoder
+from MLP import MLPRegressor
 import pandas as pd
 from tqdm import tqdm
 
@@ -270,4 +270,3 @@ for epoch in range(num_epochs):
     print(f' val_Loss: {val_loss:.6f}')
     torch.save(mlp_model.state_dict(), mlp_model_path)
 print("训练完成，MLP 模型已保存！")
-
