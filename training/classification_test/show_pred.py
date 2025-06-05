@@ -17,10 +17,10 @@ df = df.iloc[start:-1]
 
 
 #df['prediction_tag'] = df[['prediction1', 'prediction2', 'prediction3']].idxmax(axis=1).map({'prediction1': 0, 'prediction2': 1, 'prediction3': 2})
-cond1 = (df['prediction2'] > 10000) & \
+cond1 = (df['prediction2'] > 1.9) & \
         (df['prediction2'] > df['prediction1']) & \
         (df['prediction2'] > df['prediction3'])
-cond2 = df['prediction1'] >= df['prediction3']+1000
+cond2 = df['prediction1'] >= df['prediction3']-0.095
 choices = [1, 0]
 df['prediction_tag'] = np.select([cond1, cond2], choices, default=2)
 print(df.head())

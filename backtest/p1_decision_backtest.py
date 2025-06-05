@@ -19,7 +19,7 @@ df = df.iloc[:-1]
 #df.loc[:, 'prediction_tag'] = 2
 df.iloc[-1, df.columns.get_loc('prediction_tag')] = 1
 
-valve=0.05/100
+valve=0.04/100
 ref_price=df['close'].iloc[1]
 profit = 0.0
 status = 1   # 起始状态
@@ -27,8 +27,18 @@ in_price = 0.0
 trade=0
 long_profit=0
 short_profit=0
+long_win=0
+short_win=0
+long_lose=0
+short_lose=0
+long_win_time=0
+long_lose_time=0
+short_win_time=0
+short_lose_time=0
 d_price = 0
 in_tick = 0
+historical_max=0
+max_back=0
 tick_life_time = 10
 def commission_calculation_NQ(trades):
     if trades<=1000:
@@ -69,16 +79,40 @@ def flat_to_short():
     in_tick = 0
 
 def long_to_flat(d_price):
-    global profit, status, in_price, trade, long_profit, short_profit
+    global profit, status, in_price, trade, long_profit, short_profit,long_win,long_lose,long_win_time,long_lose_time, historical_max, max_back
     profit += (d_price - in_price)
+    if profit > historical_max:
+        historical_max = profit
+    if profit < historical_max:
+        callback = historical_max - profit
+        if callback > max_back:
+            max_back = callback
     long_profit += (d_price - in_price)
+    if d_price - in_price>0:
+        long_win += d_price - in_price
+        long_win_time += 1
+    else:
+        long_lose += d_price - in_price
+        long_lose_time += 1
     status = 1
     trade +=1
 
 def short_to_flat(d_price):
-    global profit, status, in_price, trade, long_profit, short_profit
+    global profit, status, in_price, trade, long_profit, short_profit,short_win,short_lose,short_win_time,short_lose_time, historical_max, max_back
     profit -= (d_price - in_price)
+    if profit > historical_max:
+        historical_max = profit
+    if profit < historical_max:
+        callback = historical_max - profit
+        if callback > max_back:
+            max_back = callback
     short_profit -= (d_price - in_price)
+    if d_price - in_price < 0:
+        short_win -= d_price - in_price
+        short_win_time += 1
+    else:
+        short_lose -= d_price - in_price
+        short_lose_time += 1
     status = 1
     trade +=1
 
@@ -134,17 +168,29 @@ for idx in tqdm(df.index, desc="Processing rows"):
             check_status()
 
 profit=profit/ref_price
+max_back=max_back/ref_price
 long_profit=long_profit/ref_price
 short_profit=short_profit/ref_price
 monthly_trades=trade/28.8
 average_cost_MNQ=commission_calculation_MNQ(monthly_trades)
 average_cost_NQ=commission_calculation_NQ(monthly_trades)
 
-print('total profit: ',profit)
+
 print('long profit: ',long_profit)
+print('long_win: ',long_win)
+print('long_lose: ',long_lose)
+print('long_win_time: ',long_win_time)
+print('long_lose_time: ',long_lose_time)
+
 print('short profit: ',short_profit)
+print('short_win: ',short_win)
+print('short_lose: ',short_lose)
+print('short_win_time: ',short_win_time)
+print('short_lose_time: ',short_lose_time)
 
 print('total trade: ',trade)
+print('total profit: ',profit)
+print('max_back: ',max_back)
 print('total consume MNQ: ',trade*average_cost_MNQ/43464.50)
 print('total consume NQ: ',trade*average_cost_NQ/434645.0)
 
