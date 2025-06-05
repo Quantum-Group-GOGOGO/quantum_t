@@ -3,13 +3,14 @@ import argparse
 import torch
 import pandas as pd
 import numpy as np
+from datetime import time
 from torch.utils.data import DataLoader, Subset
 from tqdm import tqdm
 from types import SimpleNamespace
 
 labeled_result_path= data_base + "/type_p1/1.9+-0.095.pkl"
 df = pd.read_pickle(labeled_result_path)
-df['test'] = df['datetime'].shift(-1)
+df['in_market'] = df['datetime'].dt.time.between(time(9, 30), time(16, 0)).astype(int)
 df['d_price'] = df['open'].shift(-1)
 #df['d_price'] = df['close']
 df['next_high'] = df['high'].shift(-1)
@@ -39,7 +40,7 @@ def commission_calculation_NQ(trades):
     else:
         commission = 0.25*(trades-20000)+0.45*(20000-10000)+0.65*(10000-1000)+0.85*1000
     CME_NFA_commission = 1.40*trades
-    spread=5.00*2*trades
+    spread=5.00*1*trades
     return (commission+CME_NFA_commission+spread)/trades
     
 def commission_calculation_MNQ(trades):
@@ -52,7 +53,7 @@ def commission_calculation_MNQ(trades):
     else:
         commission = 0.10*(trades-20000)+0.15*(20000-10000)+0.20*(10000-1000)+0.25*1000
     CME_NFA_commission = 0.22*trades
-    spread=0.50*2*trades
+    spread=0.50*1*trades
     return (commission+CME_NFA_commission+spread)/trades
 
 def flat_to_long():
@@ -82,14 +83,15 @@ def short_to_flat(d_price):
     trade +=1
 
 def check_status():
-    global status, tag, next_high, next_low, d_price
+    global status, tag, next_high, next_low, d_price, in_market
     if status == 1:
-        if tag == 0:
-            #if next_high<d_price:
-                flat_to_short()
-        elif tag == 2:
-            #if next_low>d_price:
-                flat_to_long()
+        if in_market == 1:
+            if tag == 0:
+                #if next_high<d_price:
+                    flat_to_short()
+            elif tag == 2:
+                #if next_low>d_price:
+                    flat_to_long()
 
 
 for idx in tqdm(df.index, desc="Processing rows"):
@@ -99,6 +101,7 @@ for idx in tqdm(df.index, desc="Processing rows"):
     low_price = df.at[idx, 'low']
     next_high = df.at[idx, 'next_high']
     next_low = df.at[idx, 'next_low']
+    in_market = df.at[idx, 'in_market']
     
     
     # —— 根据当前状态 status 与当前行的 tag 来决定新的 profit / status / in_price ——
