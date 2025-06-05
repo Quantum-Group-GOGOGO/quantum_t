@@ -91,7 +91,7 @@ df['close_1380'] = df['close'].rolling(window=1830, min_periods=1).mean()
 
 
 # 丢弃 'datetime' 列
-df = df.drop(columns=['datetime'], errors='ignore')
+#df = df.drop(columns=['datetime'], errors='ignore')
 # 小型切片用于测试
 print(df.head())
 # 找到第一个 NaN 的位置

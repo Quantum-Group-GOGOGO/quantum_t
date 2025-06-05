@@ -9,6 +9,7 @@ from types import SimpleNamespace
 
 labeled_result_path= data_base + "/type_p1/1.9+-0.095.pkl"
 df = pd.read_pickle(labeled_result_path)
+df['test'] = df['datetime'].shift(-1)
 df['d_price'] = df['open'].shift(-1)
 #df['d_price'] = df['close']
 df['next_high'] = df['high'].shift(-1)
@@ -27,7 +28,32 @@ long_profit=0
 short_profit=0
 d_price = 0
 in_tick = 0
-tick_life_time = 5
+tick_life_time = 20
+def commission_calculation_NQ(trades):
+    if trades<=1000:
+        commission = 0.85*trades
+    elif trades<=10000:
+        commission = 0.65*(trades-1000)+0.85*1000
+    elif trades<=20000:
+        commission = 0.45*(trades-10000)+0.65*(10000-1000)+0.85*1000
+    else:
+        commission = 0.25*(trades-20000)+0.45*(20000-10000)+0.65*(10000-1000)+0.85*1000
+    CME_NFA_commission = 1.40*trades
+    spread=5.00*2*trades
+    return (commission+CME_NFA_commission+spread)/trades
+    
+def commission_calculation_MNQ(trades):
+    if trades<=1000:
+        commission = 0.25*trades
+    elif trades<=10000:
+        commission = 0.20*(trades-1000)+0.25*1000
+    elif trades<=20000:
+        commission = 0.15*(trades-10000)+0.20*(10000-1000)+0.25*1000
+    else:
+        commission = 0.10*(trades-20000)+0.15*(20000-10000)+0.20*(10000-1000)+0.25*1000
+    CME_NFA_commission = 0.22*trades
+    spread=0.50*2*trades
+    return (commission+CME_NFA_commission+spread)/trades
 
 def flat_to_long():
     global profit, status, in_price, trade, long_profit, short_profit, d_price, in_tick
@@ -107,12 +133,17 @@ for idx in tqdm(df.index, desc="Processing rows"):
 profit=profit/ref_price
 long_profit=long_profit/ref_price
 short_profit=short_profit/ref_price
+monthly_trades=trade/28.8
+average_cost_MNQ=commission_calculation_MNQ(monthly_trades)
+average_cost_NQ=commission_calculation_NQ(monthly_trades)
+
 print('total profit: ',profit)
 print('long profit: ',long_profit)
 print('short profit: ',short_profit)
 
 print('total trade: ',trade)
-print('total consume: ',trade*0.990/43464.50)
+print('total consume MNQ: ',trade*average_cost_MNQ/43464.50)
+print('total consume NQ: ',trade*average_cost_NQ/434645.0)
 
 # 循环结束后，df 的这三列就已经记录了每一步的变化
 # 如果你只关心最后的 profit，可以直接用外部变量 profit；否则可以看 df['profit'].iloc[-1]。
