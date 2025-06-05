@@ -9,7 +9,7 @@ data_path = data_base + "/type6/Nasdaq_qqq_align_labeled_base_evaluated_normST1_
 labeled_result_path= data_base + "/type_p1/1.9+-0.095.pkl"
 # 创建测试集的 Dataset 和 DataLoader
 df = pd.read_pickle(data_path)
-df.drop(df.columns.difference(['tag','tags_in', 'tags_flat', 'tags_de','prediction1', 'prediction2', 'prediction3']), axis=1, inplace=True)
+#df.drop(df.columns.difference(['tag','tags_in', 'tags_flat', 'tags_de','prediction1', 'prediction2', 'prediction3']), axis=1, inplace=True)
 
 total = len(df)
 start = int(total * 0.9)
@@ -17,7 +17,7 @@ df = df.iloc[start:-1]
 
 
 #df['prediction_tag'] = df[['prediction1', 'prediction2', 'prediction3']].idxmax(axis=1).map({'prediction1': 0, 'prediction2': 1, 'prediction3': 2})
-cond1 = (df['prediction2'] > 1.9) & \
+cond1 = (df['prediction2'] > 0.9) & \
         (df['prediction2'] > df['prediction1']) & \
         (df['prediction2'] > df['prediction3'])
 cond2 = df['prediction1'] >= df['prediction3']-0.095
