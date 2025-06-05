@@ -19,7 +19,7 @@ df = df.iloc[:-1]
 #df.loc[:, 'prediction_tag'] = 2
 df.iloc[-1, df.columns.get_loc('prediction_tag')] = 1
 
-valve=0.04/100
+valve=0.05/100
 ref_price=df['close'].iloc[1]
 profit = 0.0
 status = 1   # 起始状态
@@ -29,7 +29,7 @@ long_profit=0
 short_profit=0
 d_price = 0
 in_tick = 0
-tick_life_time = 20
+tick_life_time = 10
 def commission_calculation_NQ(trades):
     if trades<=1000:
         commission = 0.85*trades
