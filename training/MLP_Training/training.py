@@ -20,7 +20,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 pretrain_path = data_base + '/models/mlp_regressor_80to5_400+128+40.pth'
 loss_file_path = data_base + '/models/training_loss.txt'
-mlp_model_path = data_base + '/models/mlp_regressor_80to5_1200+400+80_v1.pth'
+mlp_model_path = data_base + '/models/mlp_regressor_80to5_1200+400+80_v3.pth'
 lstm_model_path = data_base + '/models/lstm1_encoder/LSTMAutoencoder_trained_stdnorm_120to80_s3_2LSTM.pth'
 aux_encoder_path = data_base + '/models/aux_projector_encoder.pth'
 read_from_pretrained=False
@@ -92,7 +92,7 @@ output_dim = 3  # 输出 5 个 evaluation 值
 hidden_dim1 = 1200  # 隐藏层大小
 hidden_dim2 = 400  # 隐藏层大小
 hidden_dim3 = 80  # 隐藏层大小
-num_epochs = 10
+num_epochs = 1
 batch_size = 64
 learning_rate = 0.0001
 adam_learning_rate = 0.0001
@@ -126,8 +126,12 @@ else:
 
 # 内层优化器：用于更新 mlp_model 的参数，初始学习率由 lr_meta 的值给出
 
+freq =  [248682, 386831, 251829]
+freq =  [1, 1, 1]
+weights = torch.tensor([1.0/freq[0], 1.0/(freq[1]), 1.0/freq[2]], device=device)
+
 #criterion = nn.MSELoss()  # 均方误差损失
-criterion =  nn.CrossEntropyLoss()
+criterion =  nn.CrossEntropyLoss(weight=weights)
 optimizer = optim.Adam(mlp_model.parameters(), lr=adam_learning_rate, weight_decay=l2_lambda)
 
 # 新增全局 batch 计数器和累计损失变量
@@ -143,7 +147,7 @@ def validation_loss(encoders, mlp_model, val_loader, device):
     with torch.no_grad():
         for batch in val_loader:
             close_1, close_10, close_60, close_240, close_1380, \
-            volume_1, volume_10, volume_60, volume_240, volume_1380, evaluation, auxiliary = batch
+            volume_1, volume_10, volume_60, volume_240, volume_1380, evaluation, auxiliary, high_1, low_1, open_1 = batch
             evaluation = evaluation.squeeze(dim=1)
             evaluation = evaluation.long() 
             # to device
@@ -200,7 +204,7 @@ for epoch in range(num_epochs):
     with tqdm(train_dataloader, desc=f"Epoch {epoch+1}/{num_epochs}") as tbar:
         for batch in tbar:
             close_1, close_10, close_60, close_240, close_1380, \
-            volume_1, volume_10, volume_60, volume_240, volume_1380, evaluation, auxiliary = batch
+            volume_1, volume_10, volume_60, volume_240, volume_1380, evaluation, auxiliary, high_1, low_1, open_1 = batch
             evaluation = evaluation.squeeze(dim=1)
             evaluation = evaluation.long() 
             # 发送到 GPU 或 CPU

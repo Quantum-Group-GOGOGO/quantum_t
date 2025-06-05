@@ -82,9 +82,9 @@ if __name__ == "__main__":
     T4_data_path = data_base + '/type4/Nasdaq_qqq_align_labeled_base_evaluated_history.pkl'
     T4_data_tag_path =  data_base + '/type4/Nasdaq_qqq_align_labeled_base_evaluated_history_tag.pkl'
     df = pd.read_pickle(T4_data_tag_path)
-    increase_value =0.1/100
-    decrease_value =0.1/100
-    evaluation_length =20
+    increase_value =0.05/100
+    decrease_value =0.05/100
+    evaluation_length =10
     #print(df['tag'].head(100510))
     df_tag = addtags(df,increase_value,decrease_value,evaluation_length)
     df_tag.to_pickle(T4_data_tag_path)

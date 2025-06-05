@@ -21,6 +21,9 @@ class TimeSeriesLSTMTSDataset(Dataset):
         self.volume_240 = df['volume_240'].values.astype(np.float32)
         self.volume_1380 = df['volume_1380'].values.astype(np.float32)
 
+        self.high = df['high'].values.astype(np.float32)
+        self.low = df['low'].values.astype(np.float32)
+        self.open = df['open'].values.astype(np.float32)
         # 提取评测数据并转换为 float32
         #evaluation_columns = ['evaluation_30', 'evaluation_60', 'evaluation_120', 'evaluation_300', 'evaluation_480']
         #evaluation_columns = ['tags_in', 'tags_flat', 'tags_de']
@@ -49,6 +52,9 @@ class TimeSeriesLSTMTSDataset(Dataset):
         end_idx = idx + self.sequence_length_1380 * 1380
 
         # 根据尾端索引往前取对应长度，确保所有序列尾端对齐
+        high_1 = self.high[end_idx - self.sequence_length_1 + 1:end_idx + 1]
+        low_1 = self.low[end_idx - self.sequence_length_1 + 1:end_idx + 1]
+        open_1 = self.open[end_idx - self.sequence_length_1 + 1:end_idx + 1]
         close_1 = self.close[end_idx - self.sequence_length_1 + 1:end_idx + 1]
         close_10 = self.close_10[end_idx - (self.sequence_length_10 - 1) * 10:end_idx + 1:10]
         close_60 = self.close_60[end_idx - (self.sequence_length_60 - 1) * 60:end_idx + 1:60]
@@ -56,6 +62,9 @@ class TimeSeriesLSTMTSDataset(Dataset):
         close_1380 = self.close_1380[end_idx - (self.sequence_length_1380 - 1) * 1380:end_idx + 1:1380]
 
         # 对时间序列进行归一化
+        high_1 = self.normalize_asyseries_1(high_1,close_1)
+        low_1 = self.normalize_asyseries_1(low_1,close_1)
+        open_1 = self.normalize_asyseries_1(open_1,close_1)
         close_1 = self.normalize_series1(close_1)
         close_10 = self.normalize_series10(close_10)
         close_60 = self.normalize_series60(close_60)
@@ -76,7 +85,14 @@ class TimeSeriesLSTMTSDataset(Dataset):
         evaluation_data_current = self.evaluation_data[end_idx]
 
         return (close_1, close_10, close_60, close_240, close_1380,
-                volume_1, volume_10, volume_60, volume_240, volume_1380, evaluation_data_current, auxiliary_data_current)
+                volume_1, volume_10, volume_60, volume_240, volume_1380, evaluation_data_current, auxiliary_data_current, high_1, low_1, open_1)
+    
+    def normalize_asyseries_1(self, series, asyseries):
+        # 使用最后一个点作为基准进行归一化
+        last_value = asyseries[-1]
+        # normalized_series = expit(25*(series - last_value)/last_value)  # 使用sigmoid函数归一化 4%变化对应sigmoid(1) 所以乘25倍
+        normalized_series = 100*(series - last_value)/last_value  # 标准差归一化 不严格归一化
+        return normalized_series
     
     def normalize_series(self, series):
         # 使用最后一个点作为基准进行归一化
