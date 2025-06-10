@@ -19,7 +19,10 @@ df = df.iloc[:-1]
 #df.loc[:, 'prediction_tag'] = 2
 df.iloc[-1, df.columns.get_loc('prediction_tag')] = 1
 
-valve=0.04/100
+long_win_valve=0.05/100
+long_lose_valve=0.05/100
+short_win_valve=0.05/100
+short_lose_valve=0.05/100
 ref_price=df['close'].iloc[1]
 profit = 0.0
 status = 1   # 起始状态
@@ -39,7 +42,10 @@ d_price = 0
 in_tick = 0
 historical_max=0
 max_back=0
-tick_life_time = 10
+time_to_long=0
+time_to_short=0
+time_to_hold=0
+tick_life_time = 100
 def commission_calculation_NQ(trades):
     if trades<=1000:
         commission = 0.85*trades
@@ -117,15 +123,19 @@ def short_to_flat(d_price):
     trade +=1
 
 def check_status():
-    global status, tag, next_high, next_low, d_price, in_market
+    global status, tag, next_high, next_low, d_price, in_market, time_to_short, time_to_hold, time_to_long
     if status == 1:
-        if in_market == 1:
+        if in_market == 0:
             if tag == 0:
                 #if next_high<d_price:
                     flat_to_short()
+                    time_to_short += 1
             elif tag == 2:
                 #if next_low>d_price:
                     flat_to_long()
+                    time_to_long += 1
+            elif tag == 1:
+                    time_to_hold += 1
 
 
 for idx in tqdm(df.index, desc="Processing rows"):
@@ -144,12 +154,15 @@ for idx in tqdm(df.index, desc="Processing rows"):
 
     elif status == 0:
         in_tick += 1
-        if(high_price-in_price > in_price*valve):
-            short_to_flat(in_price+in_price*valve)
+        if( (high_price-in_price > in_price*short_lose_valve) & (in_price - low_price > in_price*short_win_valve) ): #reaches both win and lose
+            short_to_flat((high_price+low_price)/2)
             check_status()
-        elif(in_price - low_price > in_price*valve):
-            short_to_flat(in_price-in_price*valve)
+        elif(in_price - low_price > in_price*short_win_valve): #reaches win only
+            short_to_flat(in_price-in_price*short_win_valve)
             check_status()
+        #elif(high_price-in_price > in_price*short_lose_valve): #reaches lose only
+            #short_to_flat(in_price+in_price*short_lose_valve)
+            #check_status()
         elif(in_tick>=tick_life_time):
             short_to_flat(d_price)
             check_status()
@@ -157,12 +170,15 @@ for idx in tqdm(df.index, desc="Processing rows"):
 
     elif status == 2:
         in_tick += 1
-        if(high_price-in_price > in_price*valve):
-            long_to_flat(in_price+in_price*valve)
+        if( (high_price-in_price > in_price*long_win_valve) & (in_price - low_price > in_price*long_lose_valve) ): #reaches both win and lose
+            long_to_flat((high_price+low_price)/2)
             check_status()
-        elif(in_price - low_price > in_price*valve):
-            long_to_flat(in_price-in_price*valve)
+        elif(high_price-in_price > in_price*long_win_valve): #reaches win only
+            long_to_flat(in_price+in_price*long_win_valve)
             check_status()
+        #elif(in_price - low_price > in_price*long_lose_valve): #reaches lose only
+            #long_to_flat(in_price-in_price*long_lose_valve)
+            #check_status()
         elif(in_tick>=tick_life_time):
             long_to_flat(d_price)
             check_status()
@@ -181,14 +197,19 @@ print('long_win: ',long_win)
 print('long_lose: ',long_lose)
 print('long_win_time: ',long_win_time)
 print('long_lose_time: ',long_lose_time)
+print(' ')
 
 print('short profit: ',short_profit)
 print('short_win: ',short_win)
 print('short_lose: ',short_lose)
 print('short_win_time: ',short_win_time)
 print('short_lose_time: ',short_lose_time)
+print(' ')
 
 print('total trade: ',trade)
+print('time to long: ',time_to_long)
+print('time to hold: ',time_to_hold)
+print('time to short: ',time_to_short)
 print('total profit: ',profit)
 print('max_back: ',max_back)
 print('total consume MNQ: ',trade*average_cost_MNQ/43464.50)
