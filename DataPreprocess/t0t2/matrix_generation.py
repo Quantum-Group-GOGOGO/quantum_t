@@ -1,7 +1,8 @@
 import pandas as pd
 import numpy as np
 from tqdm import tqdm
-data_base='/Users/wentianwang/Library/CloudStorage/GoogleDrive-littlenova223@gmail.com/My Drive/quantum_t_data'
+#data_base='/Users/wentianwang/Library/CloudStorage/GoogleDrive-littlenova223@gmail.com/My Drive/quantum_t_data'
+data_base='D:\quantum\quantum_t_data\quantum_t_data'
 QQQ_path=data_base+'/Type0/QQQ/QQQ_BASE_T.pkl'
 NQ_path=data_base+'/Type0/NQ/NQ_BASE.pkl'
 QQQ = pd.read_pickle(QQQ_path)
@@ -35,7 +36,7 @@ def moving_averaging(df,column_name,window_size=5):
     #填充最前面和最后面边缘数据产生的NAN
     #df[column_name+'_fm'].iloc[:(window_size-1)] = df[column_name].iloc[:(window_size-1)]
     #df[column_name+'_bm'].iloc[-(window_size-1):] = df[column_name].iloc[-(window_size-1):]
-    df.loc[df.index[:(window_size-1)], column_name+'_bm'] = df.loc[df.index[:(window_size-1)], column_name]
+    df.loc[df.index[:(window_size-1)], column_name+'_fm'] = df.loc[df.index[:(window_size-1)], column_name]
     df.loc[df.index[-(window_size-1):], column_name+'_bm'] = df.loc[df.index[-(window_size-1):], column_name]
 
 
