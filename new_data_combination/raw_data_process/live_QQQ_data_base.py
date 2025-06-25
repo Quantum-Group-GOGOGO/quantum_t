@@ -11,13 +11,13 @@ ib = IB()
 ib.connect('127.0.0.1', 7597, clientId=1)
 ib.reqMarketDataType(1)
 
-def request_many_day_NQ(daysN):
+def request_many_day_QQQ(daysN):
     now=datetime.now()
     dfs = pd.DataFrame(columns=['date','open','high','low','close','volume'])
     dfs.set_index('date', inplace=True)
     for day in tqdm(range(daysN), desc='Processing days'):
         endtime= now - timedelta(days=day)
-        contract = Future(symbol='NQ',exchange='CME',currency='USD',lastTradeDateOrContractMonth='202506')
+        contract = Stock('QQQ', 'NASDAQ', 'USD')
         bars = ib.reqHistoricalData(
             contract,
             endDateTime=endtime,    # 结束时间：现在
@@ -32,9 +32,8 @@ def request_many_day_NQ(daysN):
     dfs = dfs[~dfs.index.duplicated(keep='last')]
     return dfs
 
-def request_1_day_NQ(year,season):
-    monthstr=calculate_contract_month_symbol(year,season)
-    contract  = Future(symbol='NQ',exchange='CME',currency='USD',lastTradeDateOrContractMonth=monthstr)
+def request_1_day_QQQ():
+    contract = Stock('QQQ', 'NASDAQ', 'USD')
     bars = ib.reqHistoricalData(
         contract,
         endDateTime=datetime.now(),    # 结束时间：现在
@@ -48,9 +47,8 @@ def request_1_day_NQ(year,season):
     df.set_index('date', inplace=True)
     return df
 
-def request_10_min_NQ(year,season):
-    monthstr=calculate_contract_month_symbol(year,season)
-    contract  = Future(symbol='NQ',exchange='CME',currency='USD',lastTradeDateOrContractMonth=monthstr)
+def request_10_min_QQQ():
+    contract = Stock('QQQ', 'NASDAQ', 'USD')
     bars = ib.reqHistoricalData(
         contract,
         endDateTime=datetime.now(),    # 结束时间：现在
@@ -64,26 +62,45 @@ def request_10_min_NQ(year,season):
     df.set_index('date', inplace=True)
     return df
 
-def calculate_contract_month_symbol(year,season):
-    str1=str(year)
-    match season:
-        case 0:
-            return str1+'03'
-        case 1:
-            return str1+'06'
-        case 2:
-            return str1+'09'
-        case 3:
-            return str1+'12'
-        case _:
-            return str1+'03'
+def sync_QQQ_base():
+    QQQ_type0_path=live_data_base+'/type0/QQQ/QQQ_BASE.pkl'
+    QQQBASE= pd.read_pickle(QQQ_type0_path)
+    last_BASE_time=QQQBASE.index[-1]
+    now = datetime.now()
+    delta = now - last_BASE_time    # 这是一个 timedelta 对象
+    days = max(delta.days, 0)+1 # .days 已经是向下取整的天数，负数就算 0
+    df=request_many_day_QQQ(days)
+    #合并QQQBASE和df,重复datetime（索引列）项目则保留df中的值
+    # 1. 找到 df 中最小（即最早）的索引：
+    first_new_idx = df.index[0]
+    # 2. 在 QQQBASE 的索引上做二分查找，定位到第一个 >= first_new_idx 的位置
+    #    这就是所有可能重复的第一行
+    pos = QQQBASE.index.searchsorted(first_new_idx, side='left')
+    # 3. 切片：只保留 QQQBASE 中索引 < first_new_idx 的那部分
+    base_trimmed = QQQBASE.iloc[:pos]
+    # 4. 直接上下拼接
+    merged = pd.concat([base_trimmed, df])
+    #merged重新赋值回QQQBASE
 
 def main():
-    df=request_1_day_NQ(2025,1)
+    # 1. 连接 IB Gateway / TWS
+    
+
+    #args.contract_symbol = 'QQQ'
+    #args.secType = "STK"
+    #args.exchange = "NASDAQ"
+    #args.currency = "USD"
+
+    
+    # 2. 定义合约：QQQ 在 SMART 交易所，交易货币 USD
+    
+    # 5. （可选）把 date 列设置为索引
+    #df.set_index('date', inplace=True)
+    #df=request_1_day_QQQ()
+    df=request_10_min_QQQ()
     # 6. 打印或返回
     print(df.head())
     print(df.tail())
-    print(len(df))
 
 if __name__ == '__main__':
     main()
