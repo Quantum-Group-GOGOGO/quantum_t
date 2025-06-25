@@ -15,7 +15,7 @@ ib.reqMarketDataType(1)
 def request_many_day_QQQ(daysN):
     now=datetime.now()
     dfs = pd.DataFrame(columns=['datetime','open','high','low','close','volume'])
-    dfs.set_index('date', inplace=True)
+    dfs.set_index('datetime', inplace=True)
     for day in tqdm(range(daysN), desc='Processing days'):
         endtime= now - timedelta(days=day)
         contract = Stock('QQQ', 'NASDAQ', 'USD')
@@ -28,7 +28,8 @@ def request_many_day_QQQ(daysN):
             useRTH=False,                  # 包括盘前盘后（如只要正常交易时段，设为 True）
             formatDate=1                   # 返回的 date 字段为 Python datetime
         )
-        df = util.df(bars)[['datetime', 'open', 'high', 'low', 'close', 'volume']].set_index('date')
+        df = util.df(bars)[['date', 'open', 'high', 'low', 'close', 'volume']].set_index('date')
+        dfs.index.rename('datetime', inplace=True)
         if dfs is None:
             dfs = df
         else:
@@ -47,8 +48,9 @@ def request_1_day_QQQ():
         useRTH=False,                  # 包括盘前盘后（如只要正常交易时段，设为 True）
         formatDate=1                   # 返回的 date 字段为 Python datetime
     )
-    df = util.df(bars)[['datetime', 'open', 'high', 'low', 'close', 'volume']]
-    df.set_index('datetime', inplace=True)
+    df = util.df(bars)[['date', 'open', 'high', 'low', 'close', 'volume']]
+    df.set_index('date', inplace=True)
+    df.index.rename('datetime', inplace=True)
     return df
 
 def request_10_min_QQQ():
@@ -62,8 +64,9 @@ def request_10_min_QQQ():
         useRTH=False,                  # 包括盘前盘后（如只要正常交易时段，设为 True）
         formatDate=1                   # 返回的 date 字段为 Python datetime
     )
-    df = util.df(bars)[['datetime', 'open', 'high', 'low', 'close', 'volume']]
-    df.set_index('datetime', inplace=True)
+    df = util.df(bars)[['date', 'open', 'high', 'low', 'close', 'volume']]
+    df.set_index('date', inplace=True)
+    df.index.rename('datetime', inplace=True)
     return df
 
 def sync_QQQ_base():
