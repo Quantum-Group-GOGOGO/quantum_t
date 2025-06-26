@@ -30,6 +30,7 @@ def request_many_day_QQQ(daysN):
         )
         df = util.df(bars)[['date', 'open', 'high', 'low', 'close', 'volume']].set_index('date')
         dfs.index.rename('datetime', inplace=True)
+        df.sort_index(ascending=True, inplace=True)
         if dfs is None:
             dfs = df
         else:

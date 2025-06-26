@@ -58,6 +58,6 @@ def is_trigger_day_pass():
     else:
         return 0
 
-is_trigger_day_on()
-is_trigger_day_on_or_pass()
-is_trigger_day_pass()
+#is_trigger_day_on()
+#is_trigger_day_on_or_pass()
+#is_trigger_day_pass()
