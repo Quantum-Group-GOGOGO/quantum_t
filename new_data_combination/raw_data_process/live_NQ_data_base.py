@@ -11,60 +11,62 @@ import recording_time_trigger as rtt
 import os
 import time
 from zoneinfo import ZoneInfo
+import asyncio
 
-ib = IB()
-ib.connect('127.0.0.1', 4002, clientId=1)
-ib.reqMarketDataType(1)
-def onError(reqId, errorCode, errorString, contract):
-    if errorCode in (162, 2174):
-        return
-    print(f'Error {errorCode}, reqId {reqId}: {errorString}')
-ib.errorEvent += onError
+
 
 class nq_live_t0:
-    def __init__(self):
+    def __init__(self,ib):
         #初始化
+        self.ibob=ib
+        self.loop = asyncio.get_event_loop()
         self.sync_param()
         self.live_change=0 #是否发生在线状态下的合约转变
         self.last_minute_contract_num=self.current_num
         self.load_NQ_harddisk()
         self.sync_NQ_base()
         
+        
 
     def request_many_day_NQ(self,daysN,num):
-        monthstr=self.calculate_contract_month_symbol_by_int(num)
-        now=datetime.now(ZoneInfo('America/New_York'))
-        dfs = pd.DataFrame(columns=['datetime','open','high','low','close','volume'])
-        dfs.set_index('datetime', inplace=True)
-        for day in tqdm(range(daysN), desc='Processing days'):
-            endtime= now - timedelta(days=day)
-            contract = Future(symbol='NQ',exchange='CME',currency='USD',lastTradeDateOrContractMonth=monthstr)
-            bars = ib.reqHistoricalData(
-                contract,
-                endDateTime=endtime,    # 结束时间：现在
-                durationStr='86400 S',             # 向前 1 天
-                barSizeSetting='1 min',        # 1 分钟 K 线
-                whatToShow='TRADES',           # 显示成交数据，也可以用 'MIDPOINT','BID','ASK' 等
-                useRTH=False,                  # 包括盘前盘后（如只要正常交易时段，设为 True）
-                formatDate=1                   # 返回的 date 字段为 Python datetime
-            )
-            if not bars:  
-                continue
+            monthstr=self.calculate_contract_month_symbol_by_int(num)
+            now=datetime.now(ZoneInfo('America/New_York'))
+            dfs = pd.DataFrame(columns=['datetime','open','high','low','close','volume'])
+            dfs.set_index('datetime', inplace=True)
             
-            df = util.df(bars)[['date', 'open', 'high', 'low', 'close', 'volume']].set_index('date')
-            df.index.rename('datetime', inplace=True)
-            df.sort_index(ascending=True, inplace=True)
-            if dfs.empty:
-                dfs = df
-            elif df is not None:
-                dfs = pd.concat([df, dfs])
-        dfs = dfs[~dfs.index.duplicated(keep='last')]
-        return dfs
+            for day in tqdm(range(daysN), desc='Processing days'):
+                endtime= now - timedelta(days=day)
+                contract = Future(symbol='NQ',exchange='CME',currency='USD',lastTradeDateOrContractMonth=monthstr)
+                task = self.loop.create_task(self.ibob.reqHistoricalDataAsync(
+                    contract,
+                    endDateTime=endtime,    # 结束时间：现在
+                    durationStr='86400 S',             # 向前 1 天
+                    barSizeSetting='1 min',        # 1 分钟 K 线
+                    whatToShow='TRADES',           # 显示成交数据，也可以用 'MIDPOINT','BID','ASK' 等
+                    useRTH=False,                  # 包括盘前盘后（如只要正常交易时段，设为 True）
+                    formatDate=1                   # 返回的 date 字段为 Python datetime
+                ))
+                bars = self.loop.run_until_complete(task)
+                if not bars:  
+                    continue
+                
+                df = util.df(bars)[['date', 'open', 'high', 'low', 'close', 'volume']].set_index('date')
+                
+                df.index.rename('datetime', inplace=True)
+                df.sort_index(ascending=True, inplace=True)
+                if dfs.empty:
+                    dfs = df
+                elif df is not None:
+                    dfs = pd.concat([df, dfs])
+            dfs = dfs[~dfs.index.duplicated(keep='last')]
+            self.new_data=dfs
+            print(self.new_data.head())
+            #return dfs
 
     def request_1_day_NQ(self,num):
         monthstr=self.calculate_contract_month_symbol_by_int(num)
         contract  = Future(symbol='NQ',exchange='CME',currency='USD',lastTradeDateOrContractMonth=monthstr)
-        bars = ib.reqHistoricalData(
+        task = self.loop.create_task(self.ibob.reqHistoricalData(
             contract,
             endDateTime=datetime.now(ZoneInfo('America/New_York')),    # 结束时间：现在
             durationStr='86400 S',             # 向前 7 天
@@ -72,7 +74,8 @@ class nq_live_t0:
             whatToShow='TRADES',           # 显示成交数据，也可以用 'MIDPOINT','BID','ASK' 等
             useRTH=False,                  # 包括盘前盘后（如只要正常交易时段，设为 True）
             formatDate=1                   # 返回的 date 字段为 Python datetime
-        )
+        ))
+        bars = self.loop.run_until_complete(task)
         df = util.df(bars)[['date', 'open', 'high', 'low', 'close', 'volume']]
         df.set_index('date', inplace=True)
         df.index.rename('datetime', inplace=True)
@@ -81,7 +84,7 @@ class nq_live_t0:
     def request_10_min_NQ(self,num):
         monthstr=self.calculate_contract_month_symbol_by_int(num)
         contract  = Future(symbol='NQ',exchange='CME',currency='USD',lastTradeDateOrContractMonth=monthstr)
-        bars = ib.reqHistoricalData(
+        task = self.loop.create_task(self.ibob.reqHistoricalData(
             contract,
             endDateTime=datetime.now(ZoneInfo('America/New_York')),    # 结束时间：现在
             durationStr='600 S',             # 向前 10分钟
@@ -89,7 +92,8 @@ class nq_live_t0:
             whatToShow='TRADES',           # 显示成交数据，也可以用 'MIDPOINT','BID','ASK' 等
             useRTH=False,                  # 包括盘前盘后（如只要正常交易时段，设为 True）
             formatDate=1                   # 返回的 date 字段为 Python datetime
-        )
+        ))
+        bars = self.loop.run_until_complete(task)
         df = util.df(bars)[['date', 'open', 'high', 'low', 'close', 'volume']]
         df.set_index('date', inplace=True)
         df.index.rename('datetime', inplace=True)
@@ -100,7 +104,7 @@ class nq_live_t0:
         lengthstr=str((minute+3)*60)
         contract  = Future(symbol='NQ',exchange='CME',currency='USD',lastTradeDateOrContractMonth=monthstr)
 
-        bars = ib.reqHistoricalData(
+        task = self.loop.create_task(self.ibob.reqHistoricalData(
             contract,
             endDateTime=datetime.now(ZoneInfo('America/New_York')),    # 结束时间：现在
             durationStr=lengthstr+' S',             # 向前 10分钟
@@ -108,8 +112,8 @@ class nq_live_t0:
             whatToShow='TRADES',           # 显示成交数据，也可以用 'MIDPOINT','BID','ASK' 等
             useRTH=False,                  # 包括盘前盘后（如只要正常交易时段，设为 True）
             formatDate=1                   # 返回的 date 字段为 Python datetime
-        )
-        
+        ))
+        bars = self.loop.run_until_complete(task)
         df = util.df(bars)[['date', 'open', 'high', 'low', 'close', 'volume']]
         df.set_index('date', inplace=True)
         df.index.rename('datetime', inplace=True)
@@ -240,7 +244,7 @@ class nq_live_t0:
             last_BASE_time=self.current_contract_data.index[-1]
             delta = self.now - last_BASE_time.replace(tzinfo=ZoneInfo('America/New_York'))    # 这是一个 timedelta 对象
             days = max(delta.days, 0)+1 # .days 已经是向下取整的天数，负数就算 0
-            self.new_data=self.request_many_day_NQ(days,self.current_num)
+            self.request_many_day_NQ(days,self.current_num)
             self.current_contract_data=self.fast_concat(self.current_contract_data,self.new_data)
             self.current_contract_data.to_pickle(self.NQ_type0_path+self.current_filename)
         else:
@@ -255,7 +259,7 @@ class nq_live_t0:
             last_BASE_time=self.next_contract_data.index[-1]
             delta = self.now - last_BASE_time.replace(tzinfo=ZoneInfo('America/New_York'))    # 这是一个 timedelta 对象
             days = max(delta.days, 0)+1 # .days 已经是向下取整的天数，负数就算 0
-            self.new_data=self.request_many_day_NQ(days,self.next_num)
+            self.request_many_day_NQ(days,self.next_num)
             self.next_contract_data=self.fast_concat(self.next_contract_data,self.new_data)
             self.next_contract_data.to_pickle(self.NQ_type0_path+self.next_filename)
         else:
@@ -290,11 +294,29 @@ class nq_live_t0:
         
             self.next_contract_data=self.fast_concat(self.next_contract_data,self.request_many_min_NQ(minute,self.next_num))
             
+    def fast_march(self,datetime_,open_,high_,low_,close_,volume_,current_):
+        # 这个函数快速录入当前数据，不需要激活request history，只有在发现数据不连续时再动用request history函数用于核对
+        # 1) 把这一根 Bar 构造成只有一行的小 DataFrame，
+        #    索引用 bar_datetime，列名必须和 self.current_contract_data 一致
+        new_row = pd.DataFrame(
+            [[open_, high_, low_, close_, volume_]],
+            index=[datetime_],
+            columns=['open', 'high', 'low', 'close', 'volume']
+        )
+        new_row.index.name = 'datetime'  # 如果你的 current_contract_data.index 名称也是 'datetime'
 
+        # 2) 用 concat 拼接到原 DataFrame 底部
+        if current_ == 1:
+            self.current_contract_data = self.fast_concat([self.current_contract_data, new_row])
+        else:
+            self.next_contract_data = self.fast_concat([self.next_contract_data, new_row])
 
 def main():
+    ib = IB()
+    ib.connect('127.0.0.1', 4002, clientId=2)
+    ib.reqMarketDataType(1)
     print("begin init")
-    object=nq_live_t0()
+    object=nq_live_t0(ib)
     object.sync_param()
     object.load_NQ_harddisk()
     object.sync_NQ_base()
