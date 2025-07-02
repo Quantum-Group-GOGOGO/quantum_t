@@ -14,9 +14,9 @@ from zoneinfo import ZoneInfo
 #ib.reqMarketDataType(1)
 
 # 1. 从 pkl 文件中读取 DataFrame
-df = pd.read_pickle(live_data_base+'/type0/QQQ/'+'QQQ_BASE.pkl')
+#df = pd.read_pickle(live_data_base+'/type0/QQQ/'+'QQQ_BASE.pkl')
 #df.to_pickle(live_data_base+'/type0/QQQ/'+'QQQ_BASE.pkl')
-#df = pd.read_pickle(live_data_base+'/type0/NQ/'+'NQBASE2025M.pkl')
+df = pd.read_pickle(live_data_base+'/type0/NQ/'+'NQBASE2025U.pkl')
 # 2. 保存为 CSV 文件（保留行索引）
 df.to_csv('data.csv', index=True)
 

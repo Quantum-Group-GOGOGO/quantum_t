@@ -9,6 +9,16 @@ import os, psutil
 from live_NQ_data_base import nq_live_t0
 from live_QQQ_data_base import qqq_live_t0
 
+def onError(reqId, errorCode, errorString, contract):
+    # 162 就是历史数据空
+    if errorCode == 162:
+        pass
+    elif errorCode == 2174:
+        pass
+    else:
+        # 你也可以记录日志或做别的处理
+        print(f"[Error {errorCode}] ReqId {reqId}: {errorString}")
+
 class minute_bar:
     def __init__(self):
         self.clear()
@@ -192,6 +202,7 @@ class main_Program:
         self.ib = IB()
         self.ib.connect(localhost, 4002, clientId=2)
         self.ib.reqMarketDataType(1)
+        self.ib.errorEvent += onError
         print('已连接到 IB Gateway/TWS')
 
         self.t0_obj_nq = nq_live_t0(self.ib)

@@ -24,12 +24,13 @@ class qqq_live_t0:
         self.live_change=0 #是否发生在线状态下的合约转变
         self.load_QQQ_harddisk()
         self.sync_QQQ_base()
+        print(f'QQQ T0处理器初始化完成  {datetime.now()}')
 
     def request_many_day_QQQ(self,daysN):
         now=datetime.now()
         dfs = pd.DataFrame(columns=['datetime','open','high','low','close','volume'])
         dfs.set_index('datetime', inplace=True)
-        for day in tqdm(range(daysN), desc='Processing days'):
+        for day in tqdm(range(daysN), desc='QQQ 历史数据同步中'):
             endtime= now - timedelta(days=day)
             contract = Stock('QQQ', 'SMART', 'USD')
             bars = self._safe_reqHistorical(
@@ -236,13 +237,16 @@ class qqq_live_t0:
             new_row.index.name = 'datetime'  # 如果你的 current_contract_data.index 名称也是 'datetime'
             # 2) 用 concat 拼接到原 DataFrame 底部
             self.fast_concat_savemain(self.QQQBASE, new_row)
+            print(f'{datetime.now()}  QQQ   1分钟连续数据处理完毕：{datetime_} {open_} {high_} {low_} {close_} {volume_}')
         elif minute<1440:
             df=await self.request_many_min_QQQAsync(minute+1)
             self.fast_concat_savemain(self.QQQBASE, df)
+            print(f'{datetime.now()}  QQQ   {minute}分钟不连续数据处理完毕：{self.QQQBASE.tail()}')
         else:
             days=minute//1440
             df=await self.request_many_day_QQQAsync(days+1)
             self.fast_concat_savemain(self.QQQBASE, df)
+            print(f'{datetime.now()}  QQQ   {days}日不连续数据处理完毕：{self.QQQBASE.tail()}')
 
             
             

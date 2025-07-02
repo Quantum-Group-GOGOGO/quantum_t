@@ -24,6 +24,8 @@ class nq_live_t0:
         self.last_minute_contract_num=self.current_num
         self.load_NQ_harddisk()
         self.sync_NQ_base()
+        print(f'NQ  T0处理器初始化完成   {datetime.now()}')
+ 
         
     async def request_many_day_NQAsync(self,daysN,num):
             monthstr=self.calculate_contract_month_symbol_by_int(num)
@@ -32,6 +34,7 @@ class nq_live_t0:
             dfs.set_index('datetime', inplace=True)
             
             for day in tqdm(range(daysN), desc='Processing days'):
+                
                 endtime= now - timedelta(days=day)
                 contract = Future(symbol='NQ',exchange='CME',currency='USD',lastTradeDateOrContractMonth=monthstr)
                 bars = await self._safe_reqHistoricalAsync(
@@ -120,7 +123,8 @@ class nq_live_t0:
             dfs = pd.DataFrame(columns=['datetime','open','high','low','close','volume'])
             dfs.set_index('datetime', inplace=True)
             
-            for day in tqdm(range(daysN), desc='Processing days'):
+            for day in tqdm(range(daysN), desc='NQ  历史数据同步中'):
+                
                 endtime= now - timedelta(days=day)
                 contract = Future(symbol='NQ',exchange='CME',currency='USD',lastTradeDateOrContractMonth=monthstr)
                 bars = self._safe_reqHistorical(
@@ -443,7 +447,7 @@ class nq_live_t0:
             last_BASE_time=self.next_contract_data.index[-1]
         delta = datetime_ - last_BASE_time
         minute=int(delta.total_seconds() // 60)
-        if minute<=100:
+        if minute<=1:
             # 这个函数快速录入当前数据，不需要激活request history，只有在发现数据不连续时再动用request history函数用于核对
             # 1) 把这一根 Bar 构造成只有一行的小 DataFrame，
             #    索引用 bar_datetime，列名必须和 self.current_contract_data 一致
@@ -457,27 +461,31 @@ class nq_live_t0:
             # 2) 用 concat 拼接到原 DataFrame 底部
             if current_ == 1:
                 self.fast_concat(self.current_contract_data, new_row)
+                print(f'{datetime.now()}  NQ当前1分钟连续数据处理完毕：{datetime_} {open_} {high_} {low_} {close_} {volume_}')
             else:
                 self.fast_concat(self.next_contract_data, new_row)
-
-                
-
+                print(f'{datetime.now()}  NQ下季1分钟连续数据处理完毕：{datetime_} {open_} {high_} {low_} {close_} {volume_}')
+            
         elif minute<1440:
             if current_==1:
                 df=await self.request_many_min_NQAsync(minute+1,self.current_num)
                 self.fast_concat_savemain(self.current_contract_data, df)
+                print(f'{datetime.now()}  NQ当前{minute}分钟不连续数据处理完毕：{self.current_contract_data.tail()}')
             else:
                 df=await self.request_many_min_NQAsync(minute+1,self.next_num)
                 self.fast_concat_savemain(self.next_contract_data, df)
+                print(f'{datetime.now()}  NQ下季{minute}分钟不连续数据处理完毕：{self.next_contract_data.tail()}')
 
         else:
             days=minute//1440
             if current_==1:
                 df=await self.request_many_day_NQAsync(days+1,self.current_num)
                 self.fast_concat_savemain(self.current_contract_data, df)
+                print(f'{datetime.now()}  NQ当前{days}日不连续数据处理完毕：{self.current_contract_data.tail()}')
             else:
                 df=await self.request_many_day_NQAsync(days+1,self.next_num)
                 self.fast_concat_savemain(self.next_contract_data, df)
+                print(f'{datetime.now()}  NQ下季{days}日不连续数据处理完毕：{self.current_contract_data.tail()}')
 
     def _safe_reqHistorical(self, contract, **kwargs):
         """
