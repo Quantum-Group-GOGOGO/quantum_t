@@ -1,16 +1,20 @@
 import pandas as pd
 import numpy as np
+from datetime import datetime, timedelta
+import time
+from env import *
 
 class PreallocDataFrame:
     """
     一个包装类，底层预分配固定行数内存，高频合并小 DataFrame 时只是就地写入，
     避免每次都重新分配和拷贝大块内存。
     """
-    def __init__(self, initial_df: pd.DataFrame, capacity: int = 100000):
+    def __init__(self, initial_df: pd.DataFrame, capacity: int = 10000):
+        self.buff_size=10000
         # 确保 initial_df 已按索引升序
         initial_df = initial_df.sort_index()
         self.columns = list(initial_df.columns)
-        self.capacity = max(capacity, len(initial_df))
+        self.capacity = max(capacity, len(initial_df)+10000)
         # 底层数据与索引数组
         self._data = np.empty((self.capacity, len(self.columns)), dtype=float)
         self._data[:] = np.nan
@@ -22,6 +26,16 @@ class PreallocDataFrame:
         # 写入初始数据
         self._data[:self._ptr, :] = initial_df.values
         self._index[:self._ptr] = initial_df.index.values
+
+    def cut_tail(self, pos: int):
+        """
+        逻辑上截断尾部：
+        调整内部指针 _ptr 到 pos，
+        下一次 to_dataframe 会只返回前 pos 行。
+        """
+        if pos < 0 or pos > self._ptr:
+            raise IndexError(f"cut_tail position {pos} out of range [0, {self._ptr}]")
+        self._ptr = pos
 
     def concat_small(self, small_df: pd.DataFrame):
         """就地追加 small_df，确保按索引升序，若空间不足则扩容到刚好能装下 new_df 的行数"""
@@ -45,12 +59,11 @@ class PreallocDataFrame:
         若不足，则将容量扩展至原来的 1.5 倍。
         """
         free = self.capacity - self._ptr
-        threshold = self.capacity // 2
+        threshold = 10000
         if free < threshold:
-            extra = threshold  # 扩展至 1.5 倍
-            self._resize(extra)
+            self._resize(10000)
 
-    def _resize(self, extra: int):
+    def _resize(self, extra: int = 10000):
         """扩容：在原有基础上再加 extra 行"""
         new_cap = self.capacity + extra
         new_data = np.empty((new_cap, len(self.columns)), dtype=float)
