@@ -13,6 +13,7 @@ import time
 from zoneinfo import ZoneInfo
 import asyncio
 from preallocdataframe import PreallocDataFrame
+from t2_processor import live_t2
 
 
 class nq_live_t0:
@@ -26,7 +27,9 @@ class nq_live_t0:
         self.sync_NQ_base()
         print(f'NQ  T0处理器初始化完成   {datetime.now()}')
  
-        
+    def link_t2obj(self, t2_processor:live_t2):#只允许被link_sub函数调用
+        self.t2_p=t2_processor
+    
     async def request_many_day_NQAsync(self,daysN,num):
             monthstr=self.calculate_contract_month_symbol_by_int(num)
             now=datetime.now(ZoneInfo('America/New_York'))

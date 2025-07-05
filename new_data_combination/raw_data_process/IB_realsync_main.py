@@ -211,7 +211,9 @@ class main_Program:
 
         self.t0_obj_nq = nq_live_t0(self.ib)
         self.t0_obj_qqq = qqq_live_t0(self.ib)
-        #self.t2_obj = live_t2(self.t0_obj_nq,self.t0_obj_qqq)
+        self.t2_obj = live_t2()
+        self.t2_obj.link_t2t0sub(self.t0_obj_nq,self.t0_obj_qqq)
+
         self.bars_list = []
         self.bars_list = subscribe_contract(self.t0_obj_nq,self.t0_obj_qqq,self.ib,self.bars_list)
     def run(self):

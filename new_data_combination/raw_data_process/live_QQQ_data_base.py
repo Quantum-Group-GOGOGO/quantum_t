@@ -11,6 +11,7 @@ from zoneinfo import ZoneInfo
 import asyncio
 import time
 from preallocdataframe import PreallocDataFrame
+from t2_processor import live_t2
 
 
 class qqq_live_t0:
@@ -22,6 +23,9 @@ class qqq_live_t0:
         self.load_QQQ_harddisk()
         self.sync_QQQ_base()
         print(f'QQQ T0处理器初始化完成  {datetime.now()}')
+
+    def link_t2obj(self, t2_processor:live_t2):#只允许被link_sub函数调用
+        self.t2_p=t2_processor
 
     def request_many_day_QQQ(self,daysN):
         now=datetime.now()
@@ -338,7 +342,6 @@ def main():
     #df.set_index('date', inplace=True)
     #df=request_1_day_QQQ()
     df=request_10_min_QQQ()
-    sync_QQQ_base()
     # 6. 打印或返回
     print(df.head())
     print(df.tail())

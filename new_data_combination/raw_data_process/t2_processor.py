@@ -1,5 +1,4 @@
-from live_NQ_data_base import nq_live_t0
-from live_QQQ_data_base import qqq_live_t0
+
 import recording_time_trigger as rtt
 from env import *
 import pandas as pd
@@ -398,13 +397,13 @@ def printht(df, n=5):
     print(snippet)
 
 
-def processNQ(NQT0,self.QQQT0):
+def processNQ(NQT0,QQQT0):
 
-    merged_df = NQT0.join(self.QQQT0,how='inner',lsuffix='_NQ',rsuffix='_QQQ')
+    merged_df = NQT0.join(QQQT0,how='inner',lsuffix='_NQ',rsuffix='_QQQ')
     merged_df=add_continue_flag(merged_df)
 
     NQT0=slice_remove_first_15_days(NQT0)
-    self.QQQT0=sliceQQQ(self.QQQT0,NQT0,0)
+    QQQT0=sliceQQQ(QQQT0,NQT0,0)
 
     times = NQT0.index
     df2 = NQT0.copy()
@@ -464,18 +463,7 @@ def processNQ(NQT0,self.QQQT0):
     return df2
 
 
-#contract_str=format_contract(2021,1)
-#t0_NQ_file=live_data_base+'/type0/NQ/'+'NQBASE'+contract_str+'.pkl'
-#self.t0_QQQ_file=live_data_base+'/type0/QQQ/QQQ_BASE.pkl'
-#NQT0=PreallocDataFrame(pd.read_pickle(t0_NQ_file))
-#self.QQQT0=PreallocDataFrame(pd.read_pickle(self.t0_QQQ_file))
-#NQT0=slice8months(NQT0)
-#self.QQQT0=sliceQQQ(self.QQQT0,NQT0,0)
-#NQT0P=processNQ(NQT0,self.QQQT0)
-#self.QQQT0P=slice7months(self.QQQT0)
-#merged = NQT0P.combine_first(self.QQQT0P)
-#merged = merged.sort_index()
-#merged.to_pickle('data.pkl')
+
 class live_t2:
     def __init__(self):
         self.t2_file=live_data_base+'/type2/type2Base.pkl'
@@ -484,6 +472,14 @@ class live_t2:
         self.QQQT0=PreallocDataFrame(pd.read_pickle(self.t0_QQQ_file))
         self.initial_dataBase()
 
+    def link_t2t0sub(self, nqt0_processor, qqqt0_processor):
+        self.nqt0_p=nqt0_processor
+        self.qqqt0_p=qqqt0_processor
+        self.nqt0_p.link_t2obj(self)
+        self.qqqt0_p.link_t2obj(self)
+        self.NQT0C=self.nqt0_p.current_contract_data
+        self.NQT0N=self.nqt0_p.next_contract_data
+        self.QQQT0=self.qqqt0_p.QQQBASE
 
     def initial_dataBase(self):
         last_ts = self.T2Base.index[-1]
@@ -517,7 +513,6 @@ class live_t2:
                 NQT0=PreallocDataFrame(pd.read_pickle(t0_NQ_file))
                 NQT0=slice_A_from_B_minus_20d(NQT0,NQT1)
                 self.QQQT0Buffer=sliceQQQ(self.QQQT0,NQT0,0)
-                print(NQT0)
                 NQT0P=processNQ(NQT0,self.QQQT0Buffer)
                 self.QQQT0P=slice_remove_first_15_days(self.QQQT0Buffer)
                 merged = NQT0P.combine_first(self.QQQT0P)
@@ -563,10 +558,10 @@ class live_t2:
                 self.T2Base = self.T2Base.sort_index()
                 self.T2Base = self.T2Base[~self.T2Base.index.duplicated(keep='first')]
             else:
-                print('self.T2Base拼接完成，无检测异常')
+                print('T2Base拼接完成，无检测异常')
 
-        print('正在保存self.T2Base')        
+        print('正在保存T2Base')        
         self.T2Base.to_pickle(self.t2_file)
-        print('self.T2Base同步已完成') 
+        print('T2Base同步已完成') 
 
 #segment = df[(df.index > t1) & (df.index <= t2)]
