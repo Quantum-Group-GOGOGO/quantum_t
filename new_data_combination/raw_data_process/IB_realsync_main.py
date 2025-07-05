@@ -8,13 +8,14 @@ import os, psutil
 
 from live_NQ_data_base import nq_live_t0
 from live_QQQ_data_base import qqq_live_t0
+from t2_processor import live_t2
 
 def onError(reqId, errorCode, errorString, contract):
     # 162 就是历史数据空
     if errorCode == 162:
-        pass
+        return
     elif errorCode == 2174:
-        pass
+        return
     else:
         # 你也可以记录日志或做别的处理
         print(f"[Error {errorCode}] ReqId {reqId}: {errorString}")
@@ -196,17 +197,21 @@ async def onBar_QQQ(t0, ib, qqq_bars, barsList, hasNew):
     #p = psutil.Process(os.getpid())
     #print("系统线程总数：", p.num_threads())
 
+
+
 class main_Program:
     def __init__(self):
         global localhost
         self.ib = IB()
-        self.ib.connect(localhost, 4002, clientId=2)
+        self.ib.connect(localhost, 4004, clientId=3)
+        print('已连接到 IB Gateway/TWS')
         self.ib.reqMarketDataType(1)
         self.ib.errorEvent += onError
-        print('已连接到 IB Gateway/TWS')
+        self.ib.disconnectedEvent += lambda: onDisconnect(self)
 
         self.t0_obj_nq = nq_live_t0(self.ib)
         self.t0_obj_qqq = qqq_live_t0(self.ib)
+        #self.t2_obj = live_t2(self.t0_obj_nq,self.t0_obj_qqq)
         self.bars_list = []
         self.bars_list = subscribe_contract(self.t0_obj_nq,self.t0_obj_qqq,self.ib,self.bars_list)
     def run(self):
@@ -218,7 +223,11 @@ class main_Program:
         self.t0_obj_qqq.save()
 
     
-
+def onDisconnect(program : main_Program):
+        print("子进程断线，退出以触发重启")
+        program.save()
+        sys.exit(1)
+        
 if __name__ == '__main__':
     main_program=main_Program()
     main_program.run()

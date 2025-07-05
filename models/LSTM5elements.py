@@ -2,10 +2,10 @@ import torch
 import torch.nn as nn
 
 # LSTM Autoencoder 的 Encoder 部分，新增 Transformer 支持
-class LSTMEncoder(nn.Module):
+class LSTMEncoder5(nn.Module):
     def __init__(self, input_size, hidden_size, num_layers, encoded_size,
                  num_heads=1, transformer_layers=0):
-        super(LSTMEncoder, self).__init__()
+        super(LSTMEncoder5, self).__init__()
         self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
         # 如果需要 transformer，初始化 TransformerEncoder
         if transformer_layers > 0:
@@ -33,9 +33,9 @@ class LSTMEncoder(nn.Module):
         return encoded
 
 # LSTM Autoencoder 的 Decoder 部分
-class LSTMDecoder(nn.Module):
+class LSTMDecoder5(nn.Module):
     def __init__(self, encoded_size, hidden_size, num_layers, input_size):
-        super(LSTMDecoder, self).__init__()
+        super(LSTMDecoder5, self).__init__()
         self.fc = nn.Linear(encoded_size, hidden_size)
         self.lstm = nn.LSTM(hidden_size, hidden_size, num_layers, batch_first=True)
         self.output_layer = nn.Linear(hidden_size, input_size)
@@ -49,7 +49,7 @@ class LSTMDecoder(nn.Module):
         return output
 
 # 编码器-解码器模型
-class LSTMAutoencoder(nn.Module):
+class LSTMAutoencoder5(nn.Module):
     def __init__(self,
                  input_size,
                  hidden_size,
@@ -57,14 +57,14 @@ class LSTMAutoencoder(nn.Module):
                  encoded_size,
                  num_heads=1,
                  transformer_layers=0):
-        super(LSTMAutoencoder, self).__init__()
-        self.encoder = LSTMEncoder(input_size,
+        super(LSTMAutoencoder5, self).__init__()
+        self.encoder = LSTMEncoder5(input_size,
                                    hidden_size,
                                    num_layers,
                                    encoded_size,
                                    num_heads,
                                    transformer_layers)
-        self.decoder = LSTMDecoder(encoded_size,
+        self.decoder = LSTMDecoder5(encoded_size,
                                    hidden_size,
                                    num_layers,
                                    input_size)

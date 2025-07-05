@@ -12,9 +12,6 @@ import asyncio
 import time
 from preallocdataframe import PreallocDataFrame
 
-ib = IB()
-ib.connect('127.0.0.1', 4002, clientId=1)
-ib.reqMarketDataType(1)
 
 class qqq_live_t0:
     def __init__(self,ib):

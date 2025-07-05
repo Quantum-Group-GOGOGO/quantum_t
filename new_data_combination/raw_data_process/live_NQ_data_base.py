@@ -563,8 +563,6 @@ def main():
     object.load_NQ_harddisk()
     object.sync_NQ_base()
     print("finish init")
-    object.minute_march()
-    print("finish march")
 
 if __name__ == '__main__':
     main()
