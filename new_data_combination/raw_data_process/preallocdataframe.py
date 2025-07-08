@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 import time
+from typing import Sequence
 from env import *
 
 class PreallocDataFrame:
@@ -83,6 +84,21 @@ class PreallocDataFrame:
                           index=self._index[:self._ptr],
                           columns=self.columns)
         return df
+
+    def append_row(self, dt: pd.Timestamp, values: Sequence[float]):
+        """
+        直接在 _ptr 位置写入单行数据，values 顺序要跟 self.columns 对应。
+        """
+        # 1) 扩容检查
+        if self._ptr + 1 > self.capacity:
+            self._resize(extra=self.buff_size)
+
+        # 2) 写索引和数据
+        self._index[self._ptr] = np.datetime64(dt)
+        self._data[self._ptr, :] = values
+
+        # 3) 指针后移
+        self._ptr += 1
 
     def __getattr__(self, name):
         """Delegate other attributes/methods to the current DataFrame"""

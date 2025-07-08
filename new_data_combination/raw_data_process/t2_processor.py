@@ -357,6 +357,11 @@ def slice7months(A):
     start_ts = last_ts - pd.Timedelta(days=113) 
     return A.loc[start_ts : last_ts]
 
+def slice5months(A):
+    last_ts = A.index[-1]                       
+    start_ts = last_ts - pd.Timedelta(days=40) 
+    return A.loc[start_ts : last_ts]
+
 def slice_remove_first_15_days(df):
     """
     如果 df 的时间跨度 > 15 天，则去掉最开始的 15 天的数据，返回剩余部分。
@@ -460,7 +465,7 @@ def processNQ(NQT0,QQQT0):
         # v3=v1/volume_ratio
         
 
-    return df2
+    return df2,PreallocDataFrame(merged_df),t2,t4,volume_ratio
 
 
 
@@ -483,14 +488,14 @@ class live_t2:
 
     def initial_dataBase(self):
         last_ts = self.T2Base.index[-1]
-        last_year,last_season=calculate_current_using_contract_year_season(last_ts)
+        last_year,last_season=calculate_current_contract_year_season(last_ts)
         last_num=yearseason_to_int(last_year,last_season)
-        now_year,now_season=calculate_current_using_contract_year_season(datetime.now())
-        now_num=yearseason_to_int(now_year,now_season)
+        now_year,now_season=calculate_current_contract_year_season(datetime.now())
+        self.now_num=yearseason_to_int(now_year,now_season)
         buffers = {}
         print(f'数据库中的T2数据截止到 {last_ts} 季')
-        print(f'需要拼凑出从 {last_num} 季到 {now_num} 季的数据')
-        for i in range(last_num, now_num+1):
+        print(f'需要拼凑出从 {last_num} 季到 {self.now_num} 季的数据')
+        for i in range(last_num, self.now_num+2):
             ny,ns=int_to_yearseason(i)
             contract_str=format_contract(ny,ns)
             t0_NQ_file=live_data_base+'/type0/NQ/'+'NQBASE'+contract_str+'.pkl'
@@ -499,21 +504,29 @@ class live_t2:
             if not os.path.exists(t1_NQ_file):
                 print('合约T1不存在，需要手动计算对齐文件')
                 NQT0=PreallocDataFrame(pd.read_pickle(t0_NQ_file))
-                NQT0=slice8months(NQT0)
+                if i==self.now_num+1:
+                    NQT0=slice5months(NQT0)
+                else:
+                    NQT0=slice8months(NQT0)
                 self.QQQT0Buffer=sliceQQQ(self.QQQT0,NQT0,0)
-                NQT0P=processNQ(NQT0,self.QQQT0Buffer)
+                if i==self.now_num+1:
+                    NQT0P,self.merged_N=processNQ(NQT0,self.QQQT0Buffer)
+                elif i==self.now_num:
+                    NQT0P,self.merged_C=processNQ(NQT0,self.QQQT0Buffer)
+                else:
+                    NQT0P,_=processNQ(NQT0,self.QQQT0Buffer)
                 self.QQQT0P=slice7months(self.QQQT0Buffer)
                 merged = NQT0P.combine_first(self.QQQT0P)
                 merged = merged.sort_index()
                 merged.to_pickle(t1_NQ_file)
                 buffers[i] = merged
-            elif i==now_num:
+            elif i==self.now_num:
                 print('最新一期合约，硬盘状态可能不完整,正在同步T1数据')
                 NQT1=PreallocDataFrame(pd.read_pickle(t1_NQ_file))
                 NQT0=PreallocDataFrame(pd.read_pickle(t0_NQ_file))
                 NQT0=slice_A_from_B_minus_20d(NQT0,NQT1)
                 self.QQQT0Buffer=sliceQQQ(self.QQQT0,NQT0,0)
-                NQT0P=processNQ(NQT0,self.QQQT0Buffer)
+                NQT0P,self.merged_C,self.t2C,self.t4C,self.volumeRC=processNQ(NQT0,self.QQQT0Buffer)
                 self.QQQT0P=slice_remove_first_15_days(self.QQQT0Buffer)
                 merged = NQT0P.combine_first(self.QQQT0P)
                 merged = merged.sort_index()
@@ -522,14 +535,50 @@ class live_t2:
                 NQT1.sort_index()
                 NQT1.to_pickle(t1_NQ_file)
                 buffers[i] = NQT1
-
-
+                self.T1C=NQT1
+            elif i==self.now_num+1 :
+                print('最新下期合约，硬盘状态可能不完整,正在同步T1数据')
+                NQT1=PreallocDataFrame(pd.read_pickle(t1_NQ_file))
+                NQT0=PreallocDataFrame(pd.read_pickle(t0_NQ_file))
+                NQT0=slice_A_from_B_minus_20d(NQT0,NQT1)
+                self.QQQT0Buffer=sliceQQQ(self.QQQT0,NQT0,0)
+                NQT0P,self.merged_N=processNQ(NQT0,self.QQQT0Buffer)
+                self.QQQT0P=slice_remove_first_15_days(self.QQQT0Buffer)
+                merged = NQT0P.combine_first(self.QQQT0P)
+                merged = merged.sort_index()
+                NQT1 = pd.concat([NQT1, merged], axis=0)
+                NQT1 = NQT1[~NQT1.index.duplicated(keep='first')]
+                NQT1.sort_index()
+                NQT1.to_pickle(t1_NQ_file)
+                buffers[i] = NQT1
+                self.T1N=NQT1
+            elif i==self.now_num-1 :
+                print('最新前1期合约，硬盘状态可能不完整,正在同步T1数据')
+                NQT1=PreallocDataFrame(pd.read_pickle(t1_NQ_file))
+                NQT0=PreallocDataFrame(pd.read_pickle(t0_NQ_file))
+                NQT0=slice_A_from_B_minus_20d(NQT0,NQT1)
+                self.QQQT0Buffer=sliceQQQ(self.QQQT0,NQT0,0)
+                NQT0P,_,_,_,_=processNQ(NQT0,self.QQQT0Buffer)
+                self.QQQT0P=slice_remove_first_15_days(self.QQQT0Buffer)
+                merged = NQT0P.combine_first(self.QQQT0P)
+                merged = merged.sort_index()
+                NQT1 = pd.concat([NQT1, merged], axis=0)
+                NQT1 = NQT1[~NQT1.index.duplicated(keep='first')]
+                NQT1.sort_index()
+                NQT1.to_pickle(t1_NQ_file)
+                buffers[i] = NQT1
+                
             else:
                 print('老旧合约T1存在，直接读入对齐文件')
                 merged=PreallocDataFrame(pd.read_pickle(t1_NQ_file))
                 buffers[i] = merged
 
-        for i in range(last_num, now_num+1):
+        last_year,last_season=calculate_current_using_contract_year_season(last_ts)
+        last_num=yearseason_to_int(last_year,last_season)
+        now_year,now_season=calculate_current_using_contract_year_season(datetime.now())
+        self.now_num=yearseason_to_int(now_year,now_season)
+
+        for i in range(last_num, self.now_num+1):
             ny1,ns1=int_to_yearseason(i-1)
             lasttime1=yearseason_to_lasttime(ny1,ns1)
             ny2,ns2=int_to_yearseason(i)
@@ -563,5 +612,72 @@ class live_t2:
         print('正在保存T2Base')        
         self.T2Base.to_pickle(self.t2_file)
         print('T2Base同步已完成') 
+    
+    def calculate_using_contract(self,time):
+        return yearseason_to_int(*calculate_current_using_contract_year_season(time))
+
+    def calculate_contract(self,time):
+        return yearseason_to_int(*calculate_current_contract_year_season(time))      
+        
+    def slow_march(self):
+
+        print('正在保存T2Base')        
+        self.T2Base.to_pickle(self.t2_file)
+        print('T2Base同步已完成') 
+        self.initial_dataBase()
+
+    def fast_march(self,datetime_,open_,high_,low_,close_,volume_,contract_):
+        intersect_idx = self.NQT0C.index[-2].intersection(self.QQQT0.index[-5:])
+        if not intersect_idx.empty:
+            C_new = self.NQT0C.loc[intersect_idx].join(self.QQQT0.loc[intersect_idx], how='inner',lsuffix='_NQ', rsuffix='_QQQ')
+            continue_now = True if (C_new.index[-1]-self.merged_C.index[-1]==pd.Timedelta(minutes=1)) else False
+            if self.merged_C['continue'].iloc[-1]==1:
+                if continue_now:
+                    #如果前一行连续，且当前行和前一行的差值也正好是1分钟
+                    C_new['continue'] = 1
+                else:
+                    #如果前一行连续，但当前行和前面差别很大
+                    C_new['continue'] = 0
+            else:
+                last59 = self.merged_C.index[-59:]
+                ns = last59.asi8
+                deltas = ns[1:] - ns[:-1]
+                one_min_ns = np.timedelta64(1, 'm').astype('timedelta64[ns]')
+                if continue_now and np.all(deltas == one_min_ns):
+                    #如果前一行不连续，但当前行和前面59行差别正好都是1分钟
+                    C_new['continue'] = 1
+                else:
+                    #否则延续不连续记录
+                    C_new['continue'] = 0
+            self.merged_C.concat_small(C_new)
+        #完成对merge_df的更新
+        if self.NQT0C.index[-1]-self.NQT0C.index[-2] > pd.Timedelta(minutes=1):#如果NQT0数据是不连续的，需要重新对齐t2和volume
+            t1=calculate_t1t2(self.merged_C,self.NQT0C.index[-1])
+            self.t2C=calculate_t1t2(self.merged_C,t1)
+            t3=previous_break2(self.merged_C,t1)
+            NQvol=sum_volume_between(self.merged_C,t1,t3,'volume_NQ')
+            QQQvol=sum_volume_between(self.merged_C,t1,t3,'volume_QQQ')
+            self.volumeRC=NQvol/QQQvol
+
+
+        t4 = last_continue_before(self.NQT0C,self.NQT0C.index[-1])
+        open_ratio4,open_ratio2=calculate_price_ratio12(self.merged_C,t4,self.t2C,'open_NQ','open_QQQ')
+        high_ratio4,high_ratio2=calculate_price_ratio12(self.merged_C,t4,self.t2C,'high_NQ','high_QQQ')
+        low_ratio4,low_ratio2=calculate_price_ratio12(self.merged_C,t4,self.t2C,'low_NQ','low_QQQ')
+        close_ratio4,close_ratio2=calculate_price_ratio12(self.merged_C,t4,self.t2C,'close_NQ','close_QQQ')
+        ratio4=(open_ratio4+high_ratio4+low_ratio4+close_ratio4)/4
+        ratio2=(open_ratio2+high_ratio2+low_ratio2+close_ratio2)/4
+
+        delta24 = self.t2C - t4
+        seconds24 = delta24.total_seconds()
+        deltatime4 = self.NQT0C.index[-1] - t4
+        secondsx1 = deltatime4.total_seconds()+1800
+        price_ratio=ratio4+((ratio2-ratio4)*(secondsx1)/(seconds24))
+
+        self.T1C.append_row(datetime_, [open_/price_ratio, high_/price_ratio, low_/price_ratio, close_/price_ratio, volume_/self.volumeRC])
+
+        #先把对应的current,next的T1更新完
+
+        
 
 #segment = df[(df.index > t1) & (df.index <= t2)]

@@ -465,9 +465,11 @@ class nq_live_t0:
             if current_ == 1:
                 self.fast_concat(self.current_contract_data, new_row)
                 print(f'{datetime.now()}  NQ当前1分钟连续数据处理完毕：{datetime_} {open_} {high_} {low_} {close_} {volume_}')
+                t2_p.fast_march(datetime_,open_,high_,low_,close_,volume_,1)
             else:
                 self.fast_concat(self.next_contract_data, new_row)
                 print(f'{datetime.now()}  NQ下季1分钟连续数据处理完毕：{datetime_} {open_} {high_} {low_} {close_} {volume_}')
+                t2_p.fast_march(datetime_,open_,high_,low_,close_,volume_,2)
             
         elif minute<1440:
             if current_==1:

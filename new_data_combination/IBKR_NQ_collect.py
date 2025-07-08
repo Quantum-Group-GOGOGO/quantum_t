@@ -38,7 +38,7 @@ def request_1_day_NQ(year,season):
     bars = ib.reqHistoricalData(
         contract,
         endDateTime=datetime.now(),    # 结束时间：现在
-        durationStr='1 D',             # 向前 7 天
+        durationStr='7 D',             # 向前 7 天
         barSizeSetting='1 min',        # 1 分钟 K 线
         whatToShow='TRADES',           # 显示成交数据，也可以用 'MIDPOINT','BID','ASK' 等
         useRTH=False,                  # 包括盘前盘后（如只要正常交易时段，设为 True）

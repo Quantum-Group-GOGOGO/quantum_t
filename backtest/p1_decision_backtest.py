@@ -3,14 +3,15 @@ import argparse
 import torch
 import pandas as pd
 import numpy as np
-from datetime import time
+from datetime import time,datetime, timedelta
 from torch.utils.data import DataLoader, Subset
 from tqdm import tqdm
 from types import SimpleNamespace
+import matplotlib.pyplot as plt
 
 labeled_result_path= data_base + "/type_p1/1.9+-0.095.pkl"
 df = pd.read_pickle(labeled_result_path)
-df['in_market'] = df['datetime'].dt.time.between(time(9, 30), time(16, 0)).astype(int)
+df['in_market'] = df['datetime'].dt.time.between(time(8, 20), time(18, 0)).astype(int)
 df['d_price'] = df['open'].shift(-1)
 #df['d_price'] = df['close']
 df['next_high'] = df['high'].shift(-1)
@@ -40,12 +41,16 @@ short_win_time=0
 short_lose_time=0
 d_price = 0
 in_tick = 0
-historical_max=0
-max_back=0
-time_to_long=0
-time_to_short=0
-time_to_hold=0
-tick_life_time = 100
+historical_max = 0
+max_back = 0
+time_to_long = 0
+time_to_short = 0
+time_to_hold = 0
+tick_life_time = 110
+
+trade_logs = []  # 每笔交易的记录列表
+current_trade = {}  # 临时存储当前开仓信息
+
 def commission_calculation_NQ(trades):
     if trades<=1000:
         commission = 0.85*trades
@@ -73,19 +78,29 @@ def commission_calculation_MNQ(trades):
     return (commission+CME_NFA_commission+spread)/trades
 
 def flat_to_long():
-    global profit, status, in_price, trade, long_profit, short_profit, d_price, in_tick
+    global profit, status, in_price, trade, long_profit, short_profit, d_price, in_tick, current_idx,current_trade
     status = 2
     in_price = d_price
     in_tick = 0
+    current_trade = {
+        'type': 'long',
+        'start_time': current_idx,
+        'start_price': in_price
+    }
 
 def flat_to_short():
-    global profit, status, in_price, trade, long_profit, short_profit, d_price, in_tick
+    global profit, status, in_price, trade, long_profit, short_profit, d_price, in_tick, current_idx,current_trade
     status = 0
     in_price = d_price
     in_tick = 0
+    current_trade = {
+        'type': 'short',
+        'start_time': current_idx,
+        'start_price': in_price
+    }
 
 def long_to_flat(d_price):
-    global profit, status, in_price, trade, long_profit, short_profit,long_win,long_lose,long_win_time,long_lose_time, historical_max, max_back
+    global profit, status, in_price, trade, long_profit, short_profit,long_win,long_lose,long_win_time,long_lose_time, historical_max, max_back, current_idx,current_trade
     profit += (d_price - in_price)
     if profit > historical_max:
         historical_max = profit
@@ -102,9 +117,16 @@ def long_to_flat(d_price):
         long_lose_time += 1
     status = 1
     trade +=1
+    trade_logs.append({
+        'type': current_trade['type'],
+        'start_time': current_trade['start_time'],
+        'end_time': current_idx,
+        'duration': (current_idx - current_trade['start_time']).total_seconds() / 60,  # 单位：分钟
+        'profit': d_price - in_price
+    })
 
 def short_to_flat(d_price):
-    global profit, status, in_price, trade, long_profit, short_profit,short_win,short_lose,short_win_time,short_lose_time, historical_max, max_back
+    global profit, status, in_price, trade, long_profit, short_profit,short_win,short_lose,short_win_time,short_lose_time, historical_max, max_back, current_idx,current_trade
     profit -= (d_price - in_price)
     if profit > historical_max:
         historical_max = profit
@@ -121,9 +143,16 @@ def short_to_flat(d_price):
         short_lose_time += 1
     status = 1
     trade +=1
+    trade_logs.append({
+        'type': current_trade['type'],
+        'start_time': current_trade['start_time'],
+        'end_time': current_idx,
+        'duration': (current_idx - current_trade['start_time']).total_seconds() / 60,
+        'profit': - d_price + in_price
+    })
 
 def check_status():
-    global status, tag, next_high, next_low, d_price, in_market, time_to_short, time_to_hold, time_to_long
+    global status, tag, next_high, next_low, d_price, in_market, time_to_short, time_to_hold, time_to_long, current_idx, current_trade
     if status == 1:
         if in_market == 0:
             if tag == 0:
@@ -146,6 +175,7 @@ for idx in tqdm(df.index, desc="Processing rows"):
     next_high = df.at[idx, 'next_high']
     next_low = df.at[idx, 'next_low']
     in_market = df.at[idx, 'in_market']
+    current_idx = df.at[idx, 'datetime']
     
     
     # —— 根据当前状态 status 与当前行的 tag 来决定新的 profit / status / in_price ——
@@ -155,7 +185,7 @@ for idx in tqdm(df.index, desc="Processing rows"):
     elif status == 0:
         in_tick += 1
         if( (high_price-in_price > in_price*short_lose_valve) & (in_price - low_price > in_price*short_win_valve) ): #reaches both win and lose
-            short_to_flat((high_price+low_price)/2)
+            short_to_flat(in_price-in_price*short_win_valve)
             check_status()
         elif(in_price - low_price > in_price*short_win_valve): #reaches win only
             short_to_flat(in_price-in_price*short_win_valve)
@@ -163,6 +193,9 @@ for idx in tqdm(df.index, desc="Processing rows"):
         #elif(high_price-in_price > in_price*short_lose_valve): #reaches lose only
             #short_to_flat(in_price+in_price*short_lose_valve)
             #check_status()
+        elif(d_price>in_price + in_price*short_win_valve*10 and in_tick>=tick_life_time/2):
+            short_to_flat(d_price)
+            check_status()
         elif(in_tick>=tick_life_time):
             short_to_flat(d_price)
             check_status()
@@ -171,7 +204,7 @@ for idx in tqdm(df.index, desc="Processing rows"):
     elif status == 2:
         in_tick += 1
         if( (high_price-in_price > in_price*long_win_valve) & (in_price - low_price > in_price*long_lose_valve) ): #reaches both win and lose
-            long_to_flat((high_price+low_price)/2)
+            long_to_flat(in_price+in_price*long_win_valve)
             check_status()
         elif(high_price-in_price > in_price*long_win_valve): #reaches win only
             long_to_flat(in_price+in_price*long_win_valve)
@@ -179,6 +212,9 @@ for idx in tqdm(df.index, desc="Processing rows"):
         #elif(in_price - low_price > in_price*long_lose_valve): #reaches lose only
             #long_to_flat(in_price-in_price*long_lose_valve)
             #check_status()
+        elif(d_price<in_price - in_price*long_win_valve*10 and in_tick>=tick_life_time/2):
+            long_to_flat(d_price)
+            check_status()
         elif(in_tick>=tick_life_time):
             long_to_flat(d_price)
             check_status()
@@ -215,5 +251,51 @@ print('max_back: ',max_back)
 print('total consume MNQ: ',trade*average_cost_MNQ/43464.50)
 print('total consume NQ: ',trade*average_cost_NQ/434645.0)
 
+df_trades = pd.DataFrame(trade_logs)
+df_trades.to_csv('trade_log.csv', index=False)
+
+# 2. 每日汇总日志
+# 根据“前一日17:30–当日17:30”划分
+def assign_day(ts: pd.Timestamp):
+    # 如果时间在当日17:30之后，就算作下一天
+    cutoff = ts.replace(hour=17, minute=30, second=0)
+    if ts >= cutoff:
+        return (ts + timedelta(days=1)).date()
+    else:
+        return ts.date()
+
+df_trades['day'] = df_trades['end_time'].apply(assign_day)
+daily = df_trades.groupby('day').agg(
+    trades_opened = ('type','count'),
+    max_profit    = ('profit','max'),
+    max_loss      = ('profit','min'),
+    win_count     = ('profit', lambda x: (x>0).sum()),
+    loss_count    = ('profit', lambda x: (x<0).sum()),
+    total_pl      = ('profit','sum')
+).reset_index()
+daily['cum_pl'] = daily['total_pl'].cumsum()
+daily['cum_trades'] = daily['trades_opened'].cumsum()
+
+
+daily.to_csv('daily_log.csv', index=False)
+
+fig, ax1 = plt.subplots()
+ax1.plot(daily['day'], daily['cum_pl'], label='Cumulative P&L')
+ax1.set_xlabel('Date')
+ax1.set_ylabel('Cumulative P&L')
+    
+ax2 = ax1.twinx()
+ax2.plot(daily['day'], daily['cum_trades'], label='Trades Opened',color='red')
+ax2.set_ylabel('Trades Opened')
+    
+# 合并图例
+lines1, labels1 = ax1.get_legend_handles_labels()
+lines2, labels2 = ax2.get_legend_handles_labels()
+ax1.legend(lines1 + lines2, labels1 + labels2, loc='upper left')
+    
+# 优化布局与日期显示
+fig.autofmt_xdate()
+plt.tight_layout()
+plt.show()
 # 循环结束后，df 的这三列就已经记录了每一步的变化
 # 如果你只关心最后的 profit，可以直接用外部变量 profit；否则可以看 df['profit'].iloc[-1]。

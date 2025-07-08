@@ -2,7 +2,7 @@
 #2拿到两天的QQQ
 #3拿到两天的NQ当季和NQ下季
 from ib_insync import *
-from recording_time_trigger import *
+from new_data_combination.raw_data_process.recording_time_trigger import *
 from datetime import datetime, date, timedelta
 
 del main

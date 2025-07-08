@@ -12,14 +12,15 @@ df = pd.read_pickle(data_path)
 #df.drop(df.columns.difference(['tag','tags_in', 'tags_flat', 'tags_de','prediction1', 'prediction2', 'prediction3']), axis=1, inplace=True)
 
 total = len(df)
-start = int(total * 0.9)
-df = df.iloc[start:-1]
-
+start = int(total * 0.8)
+end =int(total * 0.9)
+#df = df.iloc[start:-1]
+df = df.iloc[start:end]
 
 #df['prediction_tag'] = df[['prediction1', 'prediction2', 'prediction3']].idxmax(axis=1).map({'prediction1': 0, 'prediction2': 1, 'prediction3': 2})
 cond1 = (df['prediction2'] > -1.9) & \
-        (df['prediction2'] > df['prediction1']) & \
-        (df['prediction2'] > df['prediction3'])
+        (df['prediction2'] > df['prediction1']-0.5) & \
+        (df['prediction2'] > df['prediction3']-0.5)
 cond2 = df['prediction1'] >= df['prediction3']
 choices = [1, 0]
 df['prediction_tag'] = np.select([cond1, cond2], choices, default=2)
