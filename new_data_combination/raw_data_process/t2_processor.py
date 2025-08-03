@@ -3,11 +3,14 @@ import recording_time_trigger as rtt
 from env import *
 import pandas as pd
 from preallocdataframe import PreallocDataFrame
+from t3_processor import live_t3
+from rollingmean import RollingMean
 import numpy as np
 from datetime import datetime
 from tqdm import tqdm
 import time as tm
 import os
+import time
 
 def yearseason_to_lasttime(year,season):
     month=(season+1)*3
@@ -252,19 +255,6 @@ def mean_price_before(df, t, col, n=60):
     window = df.iloc[pos - n + 1 : pos + 1][col]
     return window.mean()
 
-def calculate_price_ratio12(df: pd.DataFrame,
-                            t1: pd.Timestamp,
-                            t2: pd.Timestamp,
-                            colNQ: str,
-                            colQQQ: str):
-    NQprice1=mean_price_before(df, t1, colNQ)
-    QQQprice1=mean_price_before(df, t1, colQQQ)
-    ratio1=NQprice1/QQQprice1
-    NQprice2=mean_price_before(df, t2, colNQ)
-    QQQprice2=mean_price_before(df, t2, colQQQ)
-    ratio2=NQprice2/QQQprice2
-    return ratio1,ratio2
-
 def get_ohlcv_at(df, t):
     """
     返回 df 在时间戳 t 这一行的 open, high, low, close, volume，
@@ -345,7 +335,7 @@ def sliceQQQ(A,B,buffer_lines):#A=QQQ,B=NQ
     pos_start = A.index.searchsorted(b_start, side="left")
     pos0 = max(0, pos_start - buffer_lines)
     new_start = A.index[pos0]
-    return A.loc[new_start : b_end]
+    return A.loc[new_start : b_end+pd.Timedelta(minutes=480)]
 
 def slice8months(A):
     last_ts = A.index[-1]                       
@@ -402,78 +392,12 @@ def printht(df, n=5):
     print(snippet)
 
 
-def processNQ(NQT0,QQQT0):
-
-    merged_df = NQT0.join(QQQT0,how='inner',lsuffix='_NQ',rsuffix='_QQQ')
-    merged_df=add_continue_flag(merged_df)
-
-    NQT0=slice_remove_first_15_days(NQT0)
-    QQQT0=sliceQQQ(QQQT0,NQT0,0)
-
-    times = NQT0.index
-    df2 = NQT0.copy()
-    
-    df2['open']   = np.nan
-    df2['high']   = np.nan
-    df2['low']    = np.nan
-    df2['close']  = np.nan
-    df2['volume'] = np.nan
-    changes=1
-    prev_time = times[0] - pd.Timedelta(days=1)
-    for time  in tqdm(times, desc="Processing timestamps"):
-        delta = time - prev_time
-        if delta > pd.Timedelta(minutes=1):
-
-            t1=calculate_t1t2(merged_df,time)
-            t2=calculate_t1t2(merged_df,t1)
-            t3=previous_break2(merged_df,t1)
-            NQvol=sum_volume_between(merged_df,t1,t3,'volume_NQ')
-            QQQvol=sum_volume_between(merged_df,t1,t3,'volume_QQQ')
-
-            
-
-            volume_ratio=NQvol/QQQvol
-        t4 = last_continue_before(merged_df,time)
-        open_ratio4,open_ratio2=calculate_price_ratio12(merged_df,t4,t2,'open_NQ','open_QQQ')
-        high_ratio4,high_ratio2=calculate_price_ratio12(merged_df,t4,t2,'high_NQ','high_QQQ')
-        low_ratio4,low_ratio2=calculate_price_ratio12(merged_df,t4,t2,'low_NQ','low_QQQ')
-        close_ratio4,close_ratio2=calculate_price_ratio12(merged_df,t4,t2,'close_NQ','close_QQQ')
-        ratio4=(open_ratio4+high_ratio4+low_ratio4+close_ratio4)/4
-        ratio2=(open_ratio2+high_ratio2+low_ratio2+close_ratio2)/4
-        
-        
-        delta24 = t2 - t4
-        seconds24 = delta24.total_seconds()
-        deltatime4 = time - t4
-        secondsx1 = deltatime4.total_seconds()+1800
-        price_ratio=ratio4+((ratio2-ratio4)*(secondsx1)/(seconds24))
-
-            #o1,h1,l1,c1,v1=get_ohlcv_at(NQT0, time)
-
-        df2.at[time, 'open']   = NQT0.at[time, 'open']   / price_ratio
-        df2.at[time, 'high']   = NQT0.at[time, 'high']   / price_ratio
-        df2.at[time, 'low']    = NQT0.at[time, 'low']    / price_ratio
-        df2.at[time, 'close']  = NQT0.at[time, 'close']  / price_ratio
-        df2.at[time, 'volume'] = NQT0.at[time, 'volume'] / volume_ratio
-        prev_time=time
-        #time = datetime(2024, 11, 1, 15, 31, 0)
-        
-        # o3=o1/open_ratio
-        # h3=h1/high_ratio
-        # l3=l1/low_ratio
-        # c3=c1/close_ratio
-        # v3=v1/volume_ratio
-        
-
-    return df2,PreallocDataFrame(merged_df),t2,t4,volume_ratio
-
-
 
 class live_t2:
     def __init__(self):
         self.t2_file=live_data_base+'/type2/type2Base.pkl'
         self.t0_QQQ_file=live_data_base+'/type0/QQQ/QQQ_BASE.pkl'
-        self.T2Base=pd.read_pickle(self.t2_file)
+        self.T2Base=PreallocDataFrame(pd.read_pickle(self.t2_file))
         self.QQQT0=PreallocDataFrame(pd.read_pickle(self.t0_QQQ_file))
         self.initial_dataBase()
 
@@ -486,12 +410,19 @@ class live_t2:
         self.NQT0N=self.nqt0_p.next_contract_data
         self.QQQT0=self.qqqt0_p.QQQBASE
 
+    def link_t3obj(self, t3_processor:live_t3):#只允许被link_sub函数调用
+        self.t3_p=t3_processor
+
     def initial_dataBase(self):
         last_ts = self.T2Base.index[-1]
         last_year,last_season=calculate_current_contract_year_season(last_ts)
         last_num=yearseason_to_int(last_year,last_season)
         now_year,now_season=calculate_current_contract_year_season(datetime.now())
         self.now_num=yearseason_to_int(now_year,now_season)
+        #self.NQt1MeanCalculator=RollingMean()
+        #self.QQQt1MeanCalculator=RollingMean()
+        #self.NQt2MeanCalculator=RollingMean()
+        #self.QQQt2MeanCalculator=RollingMean()
         buffers = {}
         print(f'数据库中的T2数据截止到 {last_ts} 季')
         print(f'需要拼凑出从 {last_num} 季到 {self.now_num} 季的数据')
@@ -510,28 +441,34 @@ class live_t2:
                     NQT0=slice8months(NQT0)
                 self.QQQT0Buffer=sliceQQQ(self.QQQT0,NQT0,0)
                 if i==self.now_num+1:
-                    NQT0P,self.merged_N=processNQ(NQT0,self.QQQT0Buffer)
+                    NQT0P,self.merged_N,self.t2N,self.t4N,self.volumeRN=self.processNQ(NQT0,self.QQQT0Buffer)
                 elif i==self.now_num:
-                    NQT0P,self.merged_C=processNQ(NQT0,self.QQQT0Buffer)
+                    NQT0P,self.merged_C,self.t2C,self.t4C,self.volumeRC=self.processNQ(NQT0,self.QQQT0Buffer)
                 else:
-                    NQT0P,_=processNQ(NQT0,self.QQQT0Buffer)
+                    NQT0P,_,_,_,_=self.processNQ(NQT0,self.QQQT0Buffer)
                 self.QQQT0P=slice7months(self.QQQT0Buffer)
                 merged = NQT0P.combine_first(self.QQQT0P)
                 merged = merged.sort_index()
                 merged.to_pickle(t1_NQ_file)
                 buffers[i] = merged
+                if i==self.now_num:
+                    self.T1C=merged
+                elif i==self.now_num+1 :
+                    self.T1N=merged
+
             elif i==self.now_num:
                 print('最新一期合约，硬盘状态可能不完整,正在同步T1数据')
                 NQT1=PreallocDataFrame(pd.read_pickle(t1_NQ_file))
                 NQT0=PreallocDataFrame(pd.read_pickle(t0_NQ_file))
                 NQT0=slice_A_from_B_minus_20d(NQT0,NQT1)
                 self.QQQT0Buffer=sliceQQQ(self.QQQT0,NQT0,0)
-                NQT0P,self.merged_C,self.t2C,self.t4C,self.volumeRC=processNQ(NQT0,self.QQQT0Buffer)
+                NQT0P,self.merged_C,self.t2C,self.t4C,self.volumeRC=self.processNQ(NQT0,self.QQQT0Buffer)
                 self.QQQT0P=slice_remove_first_15_days(self.QQQT0Buffer)
                 merged = NQT0P.combine_first(self.QQQT0P)
+                
                 merged = merged.sort_index()
-                NQT1 = pd.concat([NQT1, merged], axis=0)
-                NQT1 = NQT1[~NQT1.index.duplicated(keep='first')]
+                NQT1.concat_small(merged)
+                NQT1 = NQT1.drop_index_duplicates(keep='first')
                 NQT1.sort_index()
                 NQT1.to_pickle(t1_NQ_file)
                 buffers[i] = NQT1
@@ -542,12 +479,12 @@ class live_t2:
                 NQT0=PreallocDataFrame(pd.read_pickle(t0_NQ_file))
                 NQT0=slice_A_from_B_minus_20d(NQT0,NQT1)
                 self.QQQT0Buffer=sliceQQQ(self.QQQT0,NQT0,0)
-                NQT0P,self.merged_N=processNQ(NQT0,self.QQQT0Buffer)
+                NQT0P,self.merged_N,self.t2N,self.t4N,self.volumeRN=self.processNQ(NQT0,self.QQQT0Buffer)
                 self.QQQT0P=slice_remove_first_15_days(self.QQQT0Buffer)
                 merged = NQT0P.combine_first(self.QQQT0P)
                 merged = merged.sort_index()
-                NQT1 = pd.concat([NQT1, merged], axis=0)
-                NQT1 = NQT1[~NQT1.index.duplicated(keep='first')]
+                NQT1.concat_small(merged)
+                NQT1 = NQT1.drop_index_duplicates(keep='first')
                 NQT1.sort_index()
                 NQT1.to_pickle(t1_NQ_file)
                 buffers[i] = NQT1
@@ -558,12 +495,12 @@ class live_t2:
                 NQT0=PreallocDataFrame(pd.read_pickle(t0_NQ_file))
                 NQT0=slice_A_from_B_minus_20d(NQT0,NQT1)
                 self.QQQT0Buffer=sliceQQQ(self.QQQT0,NQT0,0)
-                NQT0P,_,_,_,_=processNQ(NQT0,self.QQQT0Buffer)
+                NQT0P,_,_,_,_=self.processNQ(NQT0,self.QQQT0Buffer)
                 self.QQQT0P=slice_remove_first_15_days(self.QQQT0Buffer)
                 merged = NQT0P.combine_first(self.QQQT0P)
                 merged = merged.sort_index()
-                NQT1 = pd.concat([NQT1, merged], axis=0)
-                NQT1 = NQT1[~NQT1.index.duplicated(keep='first')]
+                NQT1.concat_small(merged)
+                NQT1 = NQT1.drop_index_duplicates(keep='first')
                 NQT1.sort_index()
                 NQT1.to_pickle(t1_NQ_file)
                 buffers[i] = NQT1
@@ -575,8 +512,13 @@ class live_t2:
 
         last_year,last_season=calculate_current_using_contract_year_season(last_ts)
         last_num=yearseason_to_int(last_year,last_season)
-        now_year,now_season=calculate_current_using_contract_year_season(datetime.now())
-        self.now_num=yearseason_to_int(now_year,now_season)
+        now_using_year,now_using_season=calculate_current_using_contract_year_season(datetime.now())
+        if now_using_year!=now_year or now_using_season!=now_season:
+            self.leap=1
+        else:
+            self.leap=0
+
+        self.now_num=yearseason_to_int(now_using_year,now_using_season)
 
         for i in range(last_num, self.now_num+1):
             ny1,ns1=int_to_yearseason(i-1)
@@ -588,7 +530,7 @@ class live_t2:
             if not is_index_strictly_increasing(self.T2Base):
                 print('警告，self.T2Base不单调递增，正在排序，需要检查处理过程')
                 self.T2Base = self.T2Base.sort_index()
-                self.T2Base = self.T2Base[~self.T2Base.index.duplicated(keep='first')]
+                self.T2Base = self.T2Base.drop_index_duplicates()
 
             if not is_index_strictly_increasing(segment):
                 print('警告，新T1合约不单调递增，正在排序，需要检查处理过程')
@@ -601,11 +543,11 @@ class live_t2:
             #print(self.T2Base.tail())
             #print('拼接前准备好的数据')
             #printht(segment)
-            self.T2Base = pd.concat([self.T2Base, segment], axis=0)
+            self.T2Base.concat_small(segment)
             if not is_index_strictly_increasing(self.T2Base):
                 print('警告，self.T2Base在拼接后不单调递增，正在排序，需要检查处理过程')
                 self.T2Base = self.T2Base.sort_index()
-                self.T2Base = self.T2Base[~self.T2Base.index.duplicated(keep='first')]
+                self.T2Base = self.T2Base.drop_index_duplicates()
             else:
                 print('T2Base拼接完成，无检测异常')
 
@@ -613,70 +555,482 @@ class live_t2:
         self.T2Base.to_pickle(self.t2_file)
         print('T2Base同步已完成') 
     
+    def live_change_using(self):
+        self.leap=True
+
     def calculate_using_contract(self,time):
         return yearseason_to_int(*calculate_current_using_contract_year_season(time))
 
     def calculate_contract(self,time):
         return yearseason_to_int(*calculate_current_contract_year_season(time))      
+    
+    def calculate_price_ratio12(self,df: pd.DataFrame,
+                            t1: pd.Timestamp,
+                            t2: pd.Timestamp,
+                            colNQ: str,
+                            colQQQ: str):
+        NQprice1=mean_price_before(df, t1, colNQ)
+        QQQprice1=mean_price_before(df, t1, colQQQ)
+        #NQprice1=self.NQt1MeanCalculator.mean_before(df, t1, colNQ)
+        #QQQprice1=self.QQQt1MeanCalculator.mean_before(df, t1, colNQ)
+        ratio1=NQprice1/QQQprice1
+        NQprice2=mean_price_before(df, t2, colNQ)
+        QQQprice2=mean_price_before(df, t2, colQQQ)
+        #NQprice2=self.NQt2MeanCalculator.mean_before(df, t1, colNQ)
+        #QQQprice2=self.QQQt2MeanCalculator.mean_before(df, t1, colNQ)
+        ratio2=NQprice2/QQQprice2
+        return ratio1,ratio2
+
+    def processNQ(self,NQT0,QQQT0):
+
+        merged_df = NQT0.join(QQQT0,how='inner',lsuffix='_NQ',rsuffix='_QQQ')
+        merged_df=add_continue_flag(merged_df)
+
+        NQT0=slice_remove_first_15_days(NQT0)
+        QQQT0=sliceQQQ(QQQT0,NQT0,0)
+
+        times = NQT0.index
+        df2 = NQT0.copy()
         
+        df2['open']   = np.nan
+        df2['high']   = np.nan
+        df2['low']    = np.nan
+        df2['close']  = np.nan
+        df2['volume'] = np.nan
+        changes=1
+        prev_time = times[0] - pd.Timedelta(days=1)
+        for time  in tqdm(times, desc="Processing timestamps"):
+            delta = time - prev_time
+            if delta > pd.Timedelta(minutes=1):
+                t1=calculate_t1t2(merged_df,time)
+                t2=calculate_t1t2(merged_df,t1)
+                t3=previous_break2(merged_df,t1)
+                NQvol=sum_volume_between(merged_df,t1,t3,'volume_NQ')
+                QQQvol=sum_volume_between(merged_df,t1,t3,'volume_QQQ')
+
+                
+
+                volume_ratio=NQvol/QQQvol
+            t4 = last_continue_before(merged_df,time)
+            open_ratio4,open_ratio2=self.calculate_price_ratio12(merged_df,t4,t2,'open_NQ','open_QQQ')
+            high_ratio4,high_ratio2=self.calculate_price_ratio12(merged_df,t4,t2,'high_NQ','high_QQQ')
+            low_ratio4,low_ratio2=self.calculate_price_ratio12(merged_df,t4,t2,'low_NQ','low_QQQ')
+            close_ratio4,close_ratio2=self.calculate_price_ratio12(merged_df,t4,t2,'close_NQ','close_QQQ')
+            ratio4=(open_ratio4+high_ratio4+low_ratio4+close_ratio4)/4
+            ratio2=(open_ratio2+high_ratio2+low_ratio2+close_ratio2)/4
+            
+            
+            delta24 = t2 - t4
+            seconds24 = delta24.total_seconds()
+            deltatime4 = time - t4
+            secondsx1 = deltatime4.total_seconds()+1800
+            price_ratio=ratio4+((ratio2-ratio4)*(secondsx1)/(seconds24))
+
+                #o1,h1,l1,c1,v1=get_ohlcv_at(NQT0, time)
+
+            df2.at[time, 'open']   = NQT0.at[time, 'open']   / price_ratio
+            df2.at[time, 'high']   = NQT0.at[time, 'high']   / price_ratio
+            df2.at[time, 'low']    = NQT0.at[time, 'low']    / price_ratio
+            df2.at[time, 'close']  = NQT0.at[time, 'close']  / price_ratio
+            df2.at[time, 'volume'] = NQT0.at[time, 'volume'] / volume_ratio
+            prev_time=time
+            #time = datetime(2024, 11, 1, 15, 31, 0)
+            
+            # o3=o1/open_ratio
+            # h3=h1/high_ratio
+            # l3=l1/low_ratio
+            # c3=c1/close_ratio
+            # v3=v1/volume_ratio
+            
+
+        return df2,PreallocDataFrame(merged_df),t2,t4,volume_ratio
+
     def slow_march(self):
 
         print('正在保存T2Base')        
         self.T2Base.to_pickle(self.t2_file)
         print('T2Base同步已完成') 
         self.initial_dataBase()
+        self.t3_p.liveInitial()
 
-    def fast_march(self,datetime_,open_,high_,low_,close_,volume_,contract_):
-        intersect_idx = self.NQT0C.index[-2].intersection(self.QQQT0.index[-5:])
-        if not intersect_idx.empty:
-            C_new = self.NQT0C.loc[intersect_idx].join(self.QQQT0.loc[intersect_idx], how='inner',lsuffix='_NQ', rsuffix='_QQQ')
-            continue_now = True if (C_new.index[-1]-self.merged_C.index[-1]==pd.Timedelta(minutes=1)) else False
-            if self.merged_C['continue'].iloc[-1]==1:
-                if continue_now:
-                    #如果前一行连续，且当前行和前一行的差值也正好是1分钟
-                    C_new['continue'] = 1
+    async def multi_fast_march(self,contract_,NQstatus):
+        if contract_ ==1:
+            delta=self.NQT0C.index[-1]-self.T2Base.index[-1]
+        elif contract_==2:
+            delta=self.NQT0N.index[-1]-self.T2Base.index[-1]
+        elif contract_==0:
+            delta=self.QQQT0.index[-1]-self.T2Base.index[-1]
+        minute = int(delta.total_seconds() / 60)
+
+        for m in range(minute-1, -1, -1):
+            
+
+            if contract_==1:
+                datetime_=self.NQT0C.index[-(m+1)]
+                open_=self.NQT0C['open'].iloc[-(m+1)]
+                high_=self.NQT0C['high'].iloc[-(m+1)]
+                low_=self.NQT0C['low'].iloc[-(m+1)]
+                close_=self.NQT0C['close'].iloc[-(m+1)]
+                volume_=self.NQT0C['volume'].iloc[-(m+1)]
+                end= None if m==0 else -m
+                idx1 = pd.Index([self.NQT0C.index[-(2+m)]])    # 长度 1
+                
+                idx2 = self.QQQT0.index[-(5+m):end]
+                intersect_idx = idx1.intersection(idx2)
+
+                #intersect_idx = self.NQT0C.index[-2].intersection(self.QQQT0.index[-5:])
+                if not intersect_idx.empty:
+                    C_new = self.NQT0C.loc[intersect_idx].join(self.QQQT0.loc[intersect_idx], how='inner',lsuffix='_NQ', rsuffix='_QQQ')
+                    continue_now = True if (C_new.index[-1]-self.merged_C.index[-1]==pd.Timedelta(minutes=1)) else False
+                    if self.merged_C['continue'].iloc[-1]==1:
+                        if continue_now:
+                            #如果前一行连续，且当前行和前一行的差值也正好是1分钟
+                            C_new['continue'] = 1
+                        else:
+                            #如果前一行连续，但当前行和前面差别很大
+                            C_new['continue'] = 0
+                    else:
+                        last59 = self.merged_C.index[-59:]
+                        ns = last59.asi8
+                        deltas = ns[1:] - ns[:-1]
+                        one_min_ns = np.timedelta64(1, 'm').astype('timedelta64[ns]')
+                        if continue_now and np.all(deltas == one_min_ns):
+                            #如果前一行不连续，但当前行和前面59行差别正好都是1分钟
+                            C_new['continue'] = 1
+                        else:
+                            #否则延续不连续记录
+                            C_new['continue'] = 0
+                    self.merged_C.concat_small(C_new)
+                #完成对merge_df的更新
+
+                if datetime_-self.NQT0C.index[-2-m] > pd.Timedelta(minutes=1):#如果NQT0数据是不连续的，需要重新对齐t2和volume
+                    t1=calculate_t1t2(self.merged_C,datetime_)
+                    self.t2C=calculate_t1t2(self.merged_C,t1)
+                    t3=previous_break2(self.merged_C,t1)
+                    NQvol=sum_volume_between(self.merged_C,t1,t3,'volume_NQ')
+                    QQQvol=sum_volume_between(self.merged_C,t1,t3,'volume_QQQ')
+                    self.volumeRC=NQvol/QQQvol
+
+
+                t4 = last_continue_before(self.merged_C,datetime_)
+
+                open_ratio4,open_ratio2=self.calculate_price_ratio12(self.merged_C,t4,self.t2C,'open_NQ','open_QQQ')
+                high_ratio4,high_ratio2=self.calculate_price_ratio12(self.merged_C,t4,self.t2C,'high_NQ','high_QQQ')
+                low_ratio4,low_ratio2=self.calculate_price_ratio12(self.merged_C,t4,self.t2C,'low_NQ','low_QQQ')
+                close_ratio4,close_ratio2=self.calculate_price_ratio12(self.merged_C,t4,self.t2C,'close_NQ','close_QQQ')
+
+                ratio4=(open_ratio4+high_ratio4+low_ratio4+close_ratio4)/4
+                ratio2=(open_ratio2+high_ratio2+low_ratio2+close_ratio2)/4
+
+
+                delta24 = self.t2C - t4
+                seconds24 = delta24.total_seconds()
+                deltatime4 = datetime_ - t4
+                secondsx1 = deltatime4.total_seconds()+1800
+                price_ratio=ratio4+((ratio2-ratio4)*(secondsx1)/(seconds24))
+
+                o=open_/price_ratio
+                h=high_/price_ratio
+                l=low_/price_ratio
+                c=close_/price_ratio
+                v=volume_/self.volumeRC
+
+                self.T1C.insert_row_keep_last(datetime_, [o, h, l, c, v])
+                print(f'{datetime.now()}  NQ当前T1不连续数据处理，添加：{datetime_} {o} {h} {l} {c} {v}')
+
+
+                if self.leap==0:
+                    self.T2Base.insert_row_keep_last(datetime_, [o, h, l, c, v])
+                    print(f'{datetime.now()}  NQ当前活跃，T2采纳NQ当前数据：{datetime_} {o} {h} {l} {c} {v}')
+                    await self.t3_p.liveRenew(1)
                 else:
-                    #如果前一行连续，但当前行和前面差别很大
-                    C_new['continue'] = 0
-            else:
-                last59 = self.merged_C.index[-59:]
-                ns = last59.asi8
-                deltas = ns[1:] - ns[:-1]
-                one_min_ns = np.timedelta64(1, 'm').astype('timedelta64[ns]')
-                if continue_now and np.all(deltas == one_min_ns):
-                    #如果前一行不连续，但当前行和前面59行差别正好都是1分钟
-                    C_new['continue'] = 1
+                    await self.t3_p.liveRenew(0)
+                        
+            elif contract_==2:
+
+                datetime_=self.NQT0N.index[-(m+1)]
+                open_=self.NQT0N['open'].iloc[-(m+1)]
+                high_=self.NQT0N['high'].iloc[-(m+1)]
+                low_=self.NQT0N['low'].iloc[-(m+1)]
+                close_=self.NQT0N['close'].iloc[-(m+1)]
+                volume_=self.NQT0N['volume'].iloc[-(m+1)]
+                end= None if m==0 else -m
+                idx1 = pd.Index([self.NQT0N.index[-2-m]])    # 长度 1
+                idx2 = self.QQQT0.index[-(5+m):end]
+                intersect_idx = idx1.intersection(idx2)
+
+                #intersect_idx = self.NQT0N.index[-2].intersection(self.QQQT0.index[-5:])
+                if not intersect_idx.empty:
+                    N_new = self.NQT0N.loc[intersect_idx].join(self.QQQT0.loc[intersect_idx], how='inner',lsuffix='_NQ', rsuffix='_QQQ')
+                    continue_now = True if (N_new.index[-1]-self.merged_N.index[-1]==pd.Timedelta(minutes=1)) else False
+                    if self.merged_N['continue'].iloc[-1]==1:
+                        if continue_now:
+                            #如果前一行连续，且当前行和前一行的差值也正好是1分钟
+                            N_new['continue'] = 1
+                        else:
+                            #如果前一行连续，但当前行和前面差别很大
+                            N_new['continue'] = 0
+                    else:
+                        last59 = self.merged_N.index[-59:]
+                        ns = last59.asi8
+                        deltas = ns[1:] - ns[:-1]
+                        one_min_ns = np.timedelta64(1, 'm').astype('timedelta64[ns]')
+                        if continue_now and np.all(deltas == one_min_ns):
+                            #如果前一行不连续，但当前行和前面59行差别正好都是1分钟
+                            N_new['continue'] = 1
+                        else:
+                            #否则延续不连续记录
+                            N_new['continue'] = 0
+                    self.merged_N.concat_small(N_new)
+                #完成对merge_df的更新
+
+                if datetime_-self.NQT0N.index[-2-m] > pd.Timedelta(minutes=1):#如果NQT0数据是不连续的，需要重新对齐t2和volume
+                    t1=calculate_t1t2(self.merged_N,datetime_)
+                    self.t2N=calculate_t1t2(self.merged_N,t1)
+                    t3=previous_break2(self.merged_N,t1)
+                    NQvol=sum_volume_between(self.merged_N,t1,t3,'volume_NQ')
+                    QQQvol=sum_volume_between(self.merged_N,t1,t3,'volume_QQQ')
+                    self.volumeRN=NQvol/QQQvol
+
+
+                t4 = last_continue_before(self.merged_N,datetime_)
+
+                open_ratio4,open_ratio2=self.calculate_price_ratio12(self.merged_N,t4,self.t2N,'open_NQ','open_QQQ')
+                high_ratio4,high_ratio2=self.calculate_price_ratio12(self.merged_N,t4,self.t2N,'high_NQ','high_QQQ')
+                low_ratio4,low_ratio2=self.calculate_price_ratio12(self.merged_N,t4,self.t2N,'low_NQ','low_QQQ')
+                close_ratio4,close_ratio2=self.calculate_price_ratio12(self.merged_N,t4,self.t2N,'close_NQ','close_QQQ')
+
+                ratio4=(open_ratio4+high_ratio4+low_ratio4+close_ratio4)/4
+                ratio2=(open_ratio2+high_ratio2+low_ratio2+close_ratio2)/4
+
+
+                delta24 = self.t2N - t4
+                seconds24 = delta24.total_seconds()
+                deltatime4 = datetime_ - t4
+                secondsx1 = deltatime4.total_seconds()+1800
+                price_ratio=ratio4+((ratio2-ratio4)*(secondsx1)/(seconds24))
+                
+
+                o=open_/price_ratio
+                h=high_/price_ratio
+                l=low_/price_ratio
+                c=close_/price_ratio
+                v=volume_/self.volumeRN
+
+                self.T1N.insert_row_keep_last(datetime_, [o, h, l, c, v])
+                print(f'{datetime.now()}  NQ下季T1不连续数据处理，添加：{datetime_} {o} {h} {l} {c} {v}')
+
+
+                if self.leap==1:
+                    self.T2Base.insert_row_keep_last(datetime_, [o, h, l, c, v])
+                    print(f'{datetime.now()}  NQ下季活跃，T2采纳NQ下季数据：{datetime_} {o} {h} {l} {c} {v}')
+                    await self.t3_p.liveRenew(1)
                 else:
-                    #否则延续不连续记录
-                    C_new['continue'] = 0
-            self.merged_C.concat_small(C_new)
-        #完成对merge_df的更新
-        if self.NQT0C.index[-1]-self.NQT0C.index[-2] > pd.Timedelta(minutes=1):#如果NQT0数据是不连续的，需要重新对齐t2和volume
-            t1=calculate_t1t2(self.merged_C,self.NQT0C.index[-1])
-            self.t2C=calculate_t1t2(self.merged_C,t1)
-            t3=previous_break2(self.merged_C,t1)
-            NQvol=sum_volume_between(self.merged_C,t1,t3,'volume_NQ')
-            QQQvol=sum_volume_between(self.merged_C,t1,t3,'volume_QQQ')
-            self.volumeRC=NQvol/QQQvol
+                    await self.t3_p.liveRenew(0)
+
+                        
+            elif contract_==0:
+                datetime_=self.QQQT0.index[-(m+1)]
+                open_=self.QQQT0['open'].iloc[-(m+1)]
+                high_=self.QQQT0['high'].iloc[-(m+1)]
+                low_=self.QQQT0['low'].iloc[-(m+1)]
+                close_=self.QQQT0['close'].iloc[-(m+1)]
+                volume_=self.QQQT0['volume'].iloc[-(m+1)]
+                end= None if m==0 else -m
+
+                self.T1C.insert_row_keep_first(datetime_, [open_, high_, low_, close_, volume_])
+                self.T1N.insert_row_keep_first(datetime_, [open_, high_, low_, close_, volume_])
+
+                print(f'{datetime.now()}  QQQ T1不连续数据处理完毕：{datetime_} {open_} {high_} {low_} {close_} {volume_}')
+                if not NQstatus:
+                    self.T2Base.insert_row_keep_first(datetime_, [open_, high_, low_, close_, volume_])
+                    print(f'{datetime.now()}  NQ不活跃，T2采纳QQQ数据：{datetime_} {open_} {high_} {low_} {close_} {volume_}')
+                    await self.t3_p.liveRenew(0)
+        
+        
+        
+        print('NQ 当前T2不连续数据添加完成')
+        
 
 
-        t4 = last_continue_before(self.NQT0C,self.NQT0C.index[-1])
-        open_ratio4,open_ratio2=calculate_price_ratio12(self.merged_C,t4,self.t2C,'open_NQ','open_QQQ')
-        high_ratio4,high_ratio2=calculate_price_ratio12(self.merged_C,t4,self.t2C,'high_NQ','high_QQQ')
-        low_ratio4,low_ratio2=calculate_price_ratio12(self.merged_C,t4,self.t2C,'low_NQ','low_QQQ')
-        close_ratio4,close_ratio2=calculate_price_ratio12(self.merged_C,t4,self.t2C,'close_NQ','close_QQQ')
-        ratio4=(open_ratio4+high_ratio4+low_ratio4+close_ratio4)/4
-        ratio2=(open_ratio2+high_ratio2+low_ratio2+close_ratio2)/4
 
-        delta24 = self.t2C - t4
-        seconds24 = delta24.total_seconds()
-        deltatime4 = self.NQT0C.index[-1] - t4
-        secondsx1 = deltatime4.total_seconds()+1800
-        price_ratio=ratio4+((ratio2-ratio4)*(secondsx1)/(seconds24))
 
-        self.T1C.append_row(datetime_, [open_/price_ratio, high_/price_ratio, low_/price_ratio, close_/price_ratio, volume_/self.volumeRC])
 
-        #先把对应的current,next的T1更新完
+    async def fast_march(self,datetime_,open_,high_,low_,close_,volume_,contract_,NQstatus):
+
+        if contract_ ==1:
+            delta=self.NQT0C.index[-1]-self.T2Base.index[-1]
+        elif contract_==2:
+            delta=self.NQT0N.index[-1]-self.T2Base.index[-1]
+        elif contract_==0:
+            delta=self.QQQT0.index[-1]-self.T2Base.index[-1]
+        minute = int(delta.total_seconds() / 60)
+
+        if minute !=1:
+            print(f'Warning Minute is not 1 {minute} {delta} {contract_} {self.T2Base.index[-1]} ')
+            await self.multi_fast_march(contract_,NQstatus)
+            return
+        else:
+            if contract_==1:
+
+                idx1 = pd.Index([self.NQT0C.index[-2]])    # 长度 1
+                idx2 = self.QQQT0.index[-5:]
+                intersect_idx = idx1.intersection(idx2)
+
+                #intersect_idx = self.NQT0C.index[-2].intersection(self.QQQT0.index[-5:])
+                if not intersect_idx.empty:
+                    C_new = self.NQT0C.loc[intersect_idx].join(self.QQQT0.loc[intersect_idx], how='inner',lsuffix='_NQ', rsuffix='_QQQ')
+                    continue_now = True if (C_new.index[-1]-self.merged_C.index[-1]==pd.Timedelta(minutes=1)) else False
+                    if self.merged_C['continue'].iloc[-1]==1:
+                        if continue_now:
+                            #如果前一行连续，且当前行和前一行的差值也正好是1分钟
+                            C_new['continue'] = 1
+                        else:
+                            #如果前一行连续，但当前行和前面差别很大
+                            C_new['continue'] = 0
+                    else:
+                        last59 = self.merged_C.index[-59:]
+                        ns = last59.asi8
+                        deltas = ns[1:] - ns[:-1]
+                        one_min_ns = np.timedelta64(1, 'm').astype('timedelta64[ns]')
+                        if continue_now and np.all(deltas == one_min_ns):
+                            #如果前一行不连续，但当前行和前面59行差别正好都是1分钟
+                            C_new['continue'] = 1
+                        else:
+                            #否则延续不连续记录
+                            C_new['continue'] = 0
+                    self.merged_C.concat_small(C_new)
+                #完成对merge_df的更新
+
+                if datetime_-self.NQT0C.index[-2] > pd.Timedelta(minutes=1):#如果NQT0数据是不连续的，需要重新对齐t2和volume
+                    t1=calculate_t1t2(self.merged_C,datetime_)
+                    self.t2C=calculate_t1t2(self.merged_C,t1)
+                    t3=previous_break2(self.merged_C,t1)
+                    NQvol=sum_volume_between(self.merged_C,t1,t3,'volume_NQ')
+                    QQQvol=sum_volume_between(self.merged_C,t1,t3,'volume_QQQ')
+                    self.volumeRC=NQvol/QQQvol
+
+
+                t4 = last_continue_before(self.merged_C,datetime_)
+
+                open_ratio4,open_ratio2=self.calculate_price_ratio12(self.merged_C,t4,self.t2C,'open_NQ','open_QQQ')
+                high_ratio4,high_ratio2=self.calculate_price_ratio12(self.merged_C,t4,self.t2C,'high_NQ','high_QQQ')
+                low_ratio4,low_ratio2=self.calculate_price_ratio12(self.merged_C,t4,self.t2C,'low_NQ','low_QQQ')
+                close_ratio4,close_ratio2=self.calculate_price_ratio12(self.merged_C,t4,self.t2C,'close_NQ','close_QQQ')
+
+                ratio4=(open_ratio4+high_ratio4+low_ratio4+close_ratio4)/4
+                ratio2=(open_ratio2+high_ratio2+low_ratio2+close_ratio2)/4
+
+
+                delta24 = self.t2C - t4
+                seconds24 = delta24.total_seconds()
+                deltatime4 = datetime_ - t4
+                secondsx1 = deltatime4.total_seconds()+1800
+                price_ratio=ratio4+((ratio2-ratio4)*(secondsx1)/(seconds24))
+                
+                o=open_/price_ratio
+                h=high_/price_ratio
+                l=low_/price_ratio
+                c=close_/price_ratio
+                v=volume_/self.volumeRC
+                self.T1C.append_row_keep_last(datetime_, [o, h, l, c, v])
+                print(f'{datetime.now()}  NQ当前T1连续数据处理完毕：{datetime_} {o} {h} {l} {c} {v}')
+            
+                if self.leap==0:
+                    self.T2Base.append_row_keep_last(datetime_, [o, h, l, c, v])
+                    print(f'{datetime.now()}  NQ当前活跃，T2采纳NQ当前数据：{datetime_} {o} {h} {l} {c} {v}')
+                    await self.t3_p.liveRenew(1)
+                else:
+                    await self.t3_p.liveRenew(0)
+
+                
+            elif contract_==2:
+
+                
+                idx1 = pd.Index([self.NQT0N.index[-2]])    # 长度 1
+                idx2 = self.QQQT0.index[-5:]
+                intersect_idx = idx1.intersection(idx2)
+
+                #intersect_idx = self.NQT0N.index[-2].intersection(self.QQQT0.index[-5:])
+                if not intersect_idx.empty:
+                    N_new = self.NQT0N.loc[intersect_idx].join(self.QQQT0.loc[intersect_idx], how='inner',lsuffix='_NQ', rsuffix='_QQQ')
+                    continue_now = True if (N_new.index[-1]-self.merged_N.index[-1]==pd.Timedelta(minutes=1)) else False
+                    if self.merged_N['continue'].iloc[-1]==1:
+                        if continue_now:
+                            #如果前一行连续，且当前行和前一行的差值也正好是1分钟
+                            N_new['continue'] = 1
+                        else:
+                            #如果前一行连续，但当前行和前面差别很大
+                            N_new['continue'] = 0
+                    else:
+                        last59 = self.merged_N.index[-59:]
+                        ns = last59.asi8
+                        deltas = ns[1:] - ns[:-1]
+                        one_min_ns = np.timedelta64(1, 'm').astype('timedelta64[ns]')
+                        if continue_now and np.all(deltas == one_min_ns):
+                            #如果前一行不连续，但当前行和前面59行差别正好都是1分钟
+                            N_new['continue'] = 1
+                        else:
+                            #否则延续不连续记录
+                            N_new['continue'] = 0
+                    self.merged_N.concat_small(N_new)
+                #完成对merge_df的更新
+
+                if datetime_-self.NQT0N.index[-2] > pd.Timedelta(minutes=1):#如果NQT0数据是不连续的，需要重新对齐t2和volume
+                    t1=calculate_t1t2(self.merged_N,datetime_)
+                    self.t2N=calculate_t1t2(self.merged_N,t1)
+                    t3=previous_break2(self.merged_N,t1)
+                    NQvol=sum_volume_between(self.merged_N,t1,t3,'volume_NQ')
+                    QQQvol=sum_volume_between(self.merged_N,t1,t3,'volume_QQQ')
+                    self.volumeRN=NQvol/QQQvol
+
+
+                t4 = last_continue_before(self.merged_N,datetime_)
+
+                open_ratio4,open_ratio2=self.calculate_price_ratio12(self.merged_N,t4,self.t2N,'open_NQ','open_QQQ')
+                high_ratio4,high_ratio2=self.calculate_price_ratio12(self.merged_N,t4,self.t2N,'high_NQ','high_QQQ')
+                low_ratio4,low_ratio2=self.calculate_price_ratio12(self.merged_N,t4,self.t2N,'low_NQ','low_QQQ')
+                close_ratio4,close_ratio2=self.calculate_price_ratio12(self.merged_N,t4,self.t2N,'close_NQ','close_QQQ')
+
+                ratio4=(open_ratio4+high_ratio4+low_ratio4+close_ratio4)/4
+                ratio2=(open_ratio2+high_ratio2+low_ratio2+close_ratio2)/4
+
+
+                delta24 = self.t2N - t4
+                seconds24 = delta24.total_seconds()
+                deltatime4 = datetime_ - t4
+                secondsx1 = deltatime4.total_seconds()+1800
+                price_ratio=ratio4+((ratio2-ratio4)*(secondsx1)/(seconds24))
+                
+
+                o=open_/price_ratio
+                h=high_/price_ratio
+                l=low_/price_ratio
+                c=close_/price_ratio
+                v=volume_/self.volumeRN
+
+                self.T1N.append_row_keep_last(datetime_, [o, h, l, c, v])
+                
+
+                print(f'{datetime.now()}  NQ下季T1连续数据处理完毕：{datetime_} {o} {h} {l} {c} {v}')
+                if self.leap==1:
+                    self.T2Base.append_row_keep_last(datetime_, [o, h, l, c, v])
+                    print(f'{datetime.now()}  NQ下季活跃，T2采纳NQ下季数据：{datetime_} {o} {h} {l} {c} {v}')
+                    await self.t3_p.liveRenew(1)
+                else:
+                    await self.t3_p.liveRenew(0)
+
+            elif contract_==0:
+                self.T1C.append_row_keep_first(datetime_, [open_, high_, low_, close_, volume_])
+                self.T1N.append_row_keep_first(datetime_, [open_, high_, low_, close_, volume_])
+                print(f'{datetime.now()}  QQQ T1连续数据处理完毕：{datetime_} {open_} {high_} {low_} {close_} {volume_}')
+                if not NQstatus:
+                        self.T2Base.append_row(datetime_, [open_, high_, low_, close_, volume_])
+                        print(f'{datetime.now()}  NQ不活跃，T2采纳QQQ数据：{datetime_} {open_} {high_} {low_} {close_} {volume_}')
+
+                await self.t3_p.liveRenew(0)
+            #先把对应的current,next的T1更新完
+
 
         
 

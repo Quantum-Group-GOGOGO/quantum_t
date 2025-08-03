@@ -22,7 +22,7 @@ def load_encoders(lstm_path, device):
     encoded_size = 80
     num_heads = 0
     transformer_layers = 0
-    state_dict = torch.load(lstm_path, map_location=device)
+    state_dict = torch.load(lstm_path, map_location=device,weights_only=True)
     encoders = []
     for _ in range(5):
         enc = LSTMAutoencoder(input_size, hidden_size, num_layers, encoded_size, num_heads, transformer_layers).to(device)
@@ -47,10 +47,14 @@ def main():
     aux_encoder_path = data_base + '/models/aux_projector_encoder.pth'
 
     # 1. 读原始 DataFrame
-    data_path = data_base + "/type6/Nasdaq_qqq_align_labeled_base_evaluated_normST1.pkl"
+    #data_path = data_base + "/type6/Nasdaq_qqq_align_labeled_base_evaluated_normST1.pkl"
+    data_path = live_data_base +'/type6/type6Base.pkl'
     df = pd.read_pickle(data_path)
-
-    fromwhere=int(len(df) * 0.9)
+    df.index.name = 'datetime'
+    df = df.reset_index()
+    
+    print(df.head())
+    fromwhere=int(len(df) * 0.8)
 
     # 2. 新增 3 个预测列，默认全部填 0
     for j in range(1, 4):
@@ -85,7 +89,7 @@ def main():
     # 8. 加载模型
     encoders  = load_encoders(lstm_model, device)
     mlp_model = MLPRegressor(80*5+100, 1200, 400, 80, 3).to(device)
-    mlp_model.load_state_dict(torch.load(mlp_model_dic, map_location=device))
+    mlp_model.load_state_dict(torch.load(mlp_model_dic, map_location=device,weights_only=True))
     mlp_model.eval()
 
     proj_dim = 100  # 投影后维度
@@ -141,7 +145,7 @@ def main():
                 df.loc[df_indices[start:end],f'prediction{j+1}'] = preds_np[:, j]
 
     # 保存结果
-    out_path = data_base + "/type6/Nasdaq_qqq_align_labeled_base_evaluated_normST1_with_predictions_120to80_2LSTM_future2.pkl"
+    out_path = data_base + "/type6/Nasdaq_qqq_align_labeled_base_evaluated_normST1_with_predictions_120to80_2LSTM_future3.pkl"
     df.to_pickle(out_path)
     print(f"推理完成，结果保存在：{out_path}")
 

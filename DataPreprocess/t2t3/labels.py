@@ -13,11 +13,15 @@
 import printh as ph
 import pandas as pd
 import numpy as np
-
+from env import *
 # 数据读取
-data_base='/Users/wentianwang/Library/CloudStorage/GoogleDrive-littlenova223@gmail.com/My Drive/quantum_t_data'
-T2_data_path=data_base+'/type2/Nasdaq_qqq_align_base.pkl'
+#data_base='/Users/wentianwang/Library/CloudStorage/GoogleDrive-littlenova223@gmail.com/My Drive/quantum_t_data'
+#T2_data_path=data_base+'/type2/Nasdaq_qqq_align_base.pkl'
+T2_data_path=live_data_base+'/type2/type2Base.pkl'
+
 df = pd.read_pickle(T2_data_path)
+df.index.name = 'datetime'
+df = df.reset_index()
 printH=ph.PrintH(df)
 printH.add_hidden_column('high')
 printH.add_hidden_column('low')
@@ -122,6 +126,8 @@ df.loc[df['time_break_flag'] == 1, ['pre_break', 'post_break']] = 0
 # 填充所有 NaN 为 0（如果有任何遗漏）
 df['pre_break'] = df['pre_break'].fillna(0)
 df['post_break'] = df['post_break'].fillna(0)
+
+df.set_index('datetime', inplace=True)
 printH.print()
 T3_data_path=data_base+'/type3/Nasdaq_qqq_align_labeled_base.pkl'
 df.to_pickle(T3_data_path)

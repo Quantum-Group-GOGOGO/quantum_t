@@ -16,8 +16,11 @@ from t2_processor import live_t2
 
 class qqq_live_t0:
     def __init__(self,ib):
+        global live_data_base
         #初始化
         self.ibob=ib
+        self.QQQ_type0_path=live_data_base+'/type0/QQQ/'
+        self.QQQ_filename = 'QQQ_BASE.pkl'
         self.sync_param()
         self.live_change=0 #是否发生在线状态下的合约转变
         self.load_QQQ_harddisk()
@@ -179,9 +182,7 @@ class qqq_live_t0:
     def sync_param(self):
         global live_data_base
         self.now=datetime.now(ZoneInfo('America/New_York'))
-        #检查路径和文件是否存在
-        self.QQQ_type0_path=live_data_base+'/type0/QQQ/'
-        self.QQQ_filename = 'QQQ_BASE.pkl'
+        
 
     def load_QQQ_harddisk(self):
             #先处理当前季度合约
@@ -221,7 +222,7 @@ class qqq_live_t0:
         df=await self.request_many_min_QQQ(minute)
         self.fast_concat(self.QQQBASE,df)
 
-    async def fast_march(self,datetime_,open_,high_,low_,close_,volume_):
+    async def fast_march(self,datetime_,open_,high_,low_,close_,volume_,NQstatus):
         # 这个函数快速录入当前数据，不需要激活request history，只有在发现数据不连续时再动用request history函数用于核对
         # 1) 把这一根 Bar 构造成只有一行的小 DataFrame，
         #    索引用 bar_datetime，列名必须和 self.current_contract_data 一致
@@ -239,15 +240,18 @@ class qqq_live_t0:
             # 2) 用 concat 拼接到原 DataFrame 底部
             self.fast_concat_savemain(self.QQQBASE, new_row)
             print(f'{datetime.now()}  QQQ   1分钟连续数据处理完毕：{datetime_} {open_} {high_} {low_} {close_} {volume_}')
+            await self.t2_p.fast_march(datetime_,open_,high_,low_,close_,volume_,0,NQstatus)
         elif minute<1440:
             df=await self.request_many_min_QQQAsync(minute+1)
             self.fast_concat_savemain(self.QQQBASE, df)
             print(f'{datetime.now()}  QQQ   {minute}分钟不连续数据处理完毕：{self.QQQBASE.tail()}')
+            await self.t2_p.multi_fast_march(0,NQstatus)
         else:
             days=minute//1440
             df=await self.request_many_day_QQQAsync(days+1)
             self.fast_concat_savemain(self.QQQBASE, df)
             print(f'{datetime.now()}  QQQ   {days}日不连续数据处理完毕：{self.QQQBASE.tail()}')
+            self.t2_p.slow_march()
 
             
             

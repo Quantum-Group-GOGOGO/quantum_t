@@ -5,10 +5,15 @@ from ib_insync import IB, Future, util, Forex, Crypto, Stock
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 import os, psutil
-
+import pandas as pd
 from live_NQ_data_base import nq_live_t0
 from live_QQQ_data_base import qqq_live_t0
 from t2_processor import live_t2
+from t3_processor import live_t3
+from t6_processor import live_t6
+from decision_machine import live_dm
+from neuro_network_processor import live_nn
+import trading_status
 
 def onError(reqId, errorCode, errorString, contract):
     # 162 就是历史数据空
@@ -178,7 +183,9 @@ async def onBar_QQQ(t0, ib, qqq_bars, barsList, hasNew):
             qqq_bars.clear()
         else:
             qqq_bars.accumulate(bar.open_,bar.high,bar.low,bar.close,bar.volume*100)
-            await t0.fast_march(bar.time.replace(second=0, microsecond=0),qqq_bars.open_,qqq_bars.high_,qqq_bars.low_,qqq_bars.close_,qqq_bars.volume_)
+            time=bar.time.replace(second=0, microsecond=0)
+            NQstatus=await trading_status.is_contract_tradable(ib,t0.t2_p.nqt0_p.current_using_contract,time)
+            await t0.fast_march(time,qqq_bars.open_,qqq_bars.high_,qqq_bars.low_,qqq_bars.close_,qqq_bars.volume_,NQstatus)
             qqq_bars.last_bar=0
             qqq_bars.clear()
     else:
@@ -209,13 +216,29 @@ class main_Program:
         self.ib.errorEvent += onError
         self.ib.disconnectedEvent += lambda: onDisconnect(self)
 
+        #self.t3FilePath=live_data_base+'/type3/type3Base.pkl'
+        #df=pd.read_pickle(self.t3FilePath)
+        #df=df[:-10000]
+        #df.to_pickle(self.t3FilePath)
+
         self.t0_obj_nq = nq_live_t0(self.ib)
         self.t0_obj_qqq = qqq_live_t0(self.ib)
         self.t2_obj = live_t2()
+        self.t3_obj = live_t3()
+        self.t6_obj = live_t6()
+        self.nn_obj = live_nn()
+        self.dm_obj = live_dm(self.ib)
+
         self.t2_obj.link_t2t0sub(self.t0_obj_nq,self.t0_obj_qqq)
+        self.t3_obj.link_t3t2sub(self.t2_obj)
+        self.t6_obj.link_t6t3sub(self.t3_obj)
+        self.nn_obj.link_nnt6sub(self.t6_obj)
+        self.dm_obj.link_dmnnsub(self.nn_obj)
 
         self.bars_list = []
         self.bars_list = subscribe_contract(self.t0_obj_nq,self.t0_obj_qqq,self.ib,self.bars_list)
+        self.dm_obj.run()
+        print('初始化结束')
     def run(self):
         # 挂起，保持订阅不断开
         

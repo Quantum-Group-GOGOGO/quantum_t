@@ -11,11 +11,12 @@ import matplotlib.pyplot as plt
 
 labeled_result_path= data_base + "/type_p1/1.9+-0.095.pkl"
 df = pd.read_pickle(labeled_result_path)
-df['in_market'] = df['datetime'].dt.time.between(time(8, 20), time(20, 0)).astype(int)
+df['in_market'] = df['datetime'].dt.time.between(time(10, 20), time(16, 0)).astype(int)
 df['d_price'] = df['open'].shift(-1)
 #df['d_price'] = df['close']
 df['next_high'] = df['high'].shift(-1)
 df['next_low'] = df['low'].shift(-1)
+df['vwap_l'] = df['vwap'].shift(1)
 df = df.iloc[:-1]
 #df.loc[:, 'prediction_tag'] = 2
 df.iloc[-1, df.columns.get_loc('prediction_tag')] = 1
@@ -190,7 +191,7 @@ def check_status():
                         time_to_hold += 1
     elif status==3:
         waittime+=1
-        if waittime>30:
+        if waittime>0:
             flat_to_long(open_price)
             time_to_long += 1
 
@@ -211,79 +212,43 @@ for idx in tqdm(df.index, desc="Processing rows"):
     close1d = df.at[idx, 'close_1380']
     pre_event = df.at[idx, 'pre_event']
     post_event = df.at[idx, 'post_event']
-
+    vwap=df.at[idx, 'vwap']
     #if idx==df.index[-1]:
         #long_to_flat(d_price)
     # —— 根据当前状态 status 与当前行的 tag 来决定新的 profit / status / in_price ——
+    valve=0.00/100
     if status == 1:
         in_tick += 1
-        check_status()
-        if(in_tick>=20):
-            in_tick=0
-            flat_price=low_price
-        
-    elif status==3:
-        in_tick += 1
-        check_status()
-        if(in_tick>=20):
-            in_tick=0
-            flat_price=low_price
+        if in_market==1:
+            if close_price>vwap*(1+valve):
+                flat_to_long(d_price)
+            elif close_price<vwap*(1-valve):
+                flat_to_short(d_price)
 
+
+
+    #如果close小于'vwap'
     elif status == 0:
         in_tick += 1
-        if( (high_price-in_price > in_price*short_lose_valve) & (in_price - low_price > in_price*short_win_valve) ): #reaches both win and lose
-            short_to_flat(in_price-in_price*short_win_valve)
-            #check_status()
-        elif(in_price - low_price > in_price*short_win_valve): #reaches win only
-            short_to_flat(in_price-in_price*short_win_valve)
-            #check_status()
-        #elif(high_price-in_price > in_price*short_lose_valve): #reaches lose only
-            #short_to_flat(in_price+in_price*short_lose_valve)
-            #check_status()
-        elif(d_price>in_price + in_price*short_win_valve*10 and in_tick>=tick_life_time/2):
+        if in_market==1:
+            if close_price>vwap*(1+valve):
+                short_to_flat(d_price)
+            if close_price>vwap*(1+valve):
+                flat_to_long(d_price)
+        else:
             short_to_flat(d_price)
-            #check_status()
-        elif(in_tick>=tick_life_time):
-            short_to_flat(d_price)
-            #check_status()
+
 
 
     elif status == 2:
         in_tick += 1
-        if( (high_price-in_price > in_price*long_win_valve) & (in_price - low_price > in_price*long_lose_valve) ): #reaches both win and lose
-            #long_to_flat(in_price+in_price*long_win_valve)
-            #flat_price=in_price+in_price*long_win_valve
-            #long_to_flat(d_price)
-            #flat_price=d_price
-            #long_to_wait()
+        if in_market==1:
+            if close_price<vwap*(1-valve):
+                long_to_flat(d_price)
+            if close_price<vwap*(1-valve):
+                flat_to_short(d_price)
+        else:
             long_to_flat(d_price)
-            flat_price=d_price
-        elif(high_price-in_price > in_price*long_win_valve): #reaches win only
-            #long_to_flat(in_price+in_price*long_win_valve)
-            #flat_price=in_price+in_price*long_win_valve
-            #long_to_flat(d_price)
-            #flat_price=d_price
-            #long_to_wait()
-            long_to_flat(d_price)
-            flat_price=d_price
-        #elif(in_price - low_price > in_price*long_lose_valve): #reaches lose only
-            #long_to_flat(in_price-in_price*long_lose_valve)
-            #check_status()
-        # elif(d_price<in_price - in_price*long_win_valve*10 and in_tick>=tick_life_time/2):
-        #     long_to_flat(d_price)
-        #     flat_price=d_price
-            #check_status()
-        elif(in_tick>=tick_life_time or in_market==1):
-            long_to_flat(d_price)
-            flat_price=d_price
-            #check_status()
-
-    elif status == 4:
-        waittime1+=1
-        if waittime1>1:
-            long_to_flat(open_price)
-            flat_price=open_price
-
     
 
 profit=profit/ref_price

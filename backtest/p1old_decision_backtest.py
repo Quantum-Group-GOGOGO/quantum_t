@@ -3,7 +3,7 @@ import argparse
 import torch
 import pandas as pd
 import numpy as np
-from datetime import time,datetime, timedelta
+from datetime import time,timedelta
 from torch.utils.data import DataLoader, Subset
 from tqdm import tqdm
 from types import SimpleNamespace
@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 
 labeled_result_path= data_base + "/type_p1/1.9+-0.095.pkl"
 df = pd.read_pickle(labeled_result_path)
-df['in_market'] = df['datetime'].dt.time.between(time(8, 20), time(20, 0)).astype(int)
+df['in_market'] = df['datetime'].dt.time.between(time(7, 30), time(16, 0)).astype(int)
 df['d_price'] = df['open'].shift(-1)
 #df['d_price'] = df['close']
 df['next_high'] = df['high'].shift(-1)
@@ -19,11 +19,11 @@ df['next_low'] = df['low'].shift(-1)
 df = df.iloc[:-1]
 #df.loc[:, 'prediction_tag'] = 2
 df.iloc[-1, df.columns.get_loc('prediction_tag')] = 1
-x=0.05
-long_win_valve=x/100
-long_lose_valve=x/100
-short_win_valve=x/100
-short_lose_valve=x/100
+
+long_win_valve=0.05/100
+long_lose_valve=0.05/100
+short_win_valve=0.05/100
+short_lose_valve=0.05/100
 ref_price=df['close'].iloc[1]
 profit = 0.0
 status = 1   # 起始状态
@@ -41,16 +41,16 @@ short_win_time=0
 short_lose_time=0
 d_price = 0
 in_tick = 0
-historical_max = 0
-max_back = 0
-time_to_long = 0
-time_to_short = 0
-time_to_hold = 0
-tick_life_time = 110
+historical_max=0
+max_back=0
+time_to_long=0
+time_to_short=0
+time_to_hold=0
+tick_life_time = 100
+
 
 trade_logs = []  # 每笔交易的记录列表
 current_trade = {}  # 临时存储当前开仓信息
-
 def commission_calculation_NQ(trades):
     if trades<=1000:
         commission = 0.85*trades
@@ -77,10 +77,10 @@ def commission_calculation_MNQ(trades):
     spread=0.50*1*trades
     return (commission+CME_NFA_commission+spread)/trades
 
-def flat_to_long(price):
-    global profit, status, in_price, trade, long_profit, short_profit, d_price, in_tick, current_idx,current_trade
+def flat_to_long():
+    global profit, status, in_price, trade, long_profit, short_profit, d_price, in_tick,current_trade
     status = 2
-    in_price = price
+    in_price = d_price
     in_tick = 0
     current_trade = {
         'type': 'long',
@@ -88,10 +88,10 @@ def flat_to_long(price):
         'start_price': in_price
     }
 
-def flat_to_short(price):
-    global profit, status, in_price, trade, long_profit, short_profit, d_price, in_tick, current_idx,current_trade
+def flat_to_short():
+    global profit, status, in_price, trade, long_profit, short_profit, d_price, in_tick,current_trade
     status = 0
-    in_price = price
+    in_price = d_price
     in_tick = 0
     current_trade = {
         'type': 'short',
@@ -100,7 +100,7 @@ def flat_to_short(price):
     }
 
 def long_to_flat(d_price):
-    global profit, status, in_price, trade, long_profit, short_profit,long_win,long_lose,long_win_time,long_lose_time, historical_max, max_back, current_idx,current_trade, in_tick
+    global profit, status, in_price, trade, long_profit, short_profit,long_win,long_lose,long_win_time,long_lose_time, historical_max, max_back,trade_logs, current_idx,current_trade, in_tick
     profit += (d_price - in_price)
     if profit > historical_max:
         historical_max = profit
@@ -124,10 +124,9 @@ def long_to_flat(d_price):
         'duration': (current_idx - current_trade['start_time']).total_seconds() / 60,  # 单位：分钟
         'profit': d_price - in_price
     })
-    in_tick = 0
 
 def short_to_flat(d_price):
-    global profit, status, in_price, trade, long_profit, short_profit,short_win,short_lose,short_win_time,short_lose_time, historical_max, max_back, current_idx,current_trade, in_tick
+    global profit, status, in_price, trade, long_profit, short_profit,short_win,short_lose,short_win_time,short_lose_time, historical_max, max_back,trade_logs, current_idx,current_trade, in_tick
     profit -= (d_price - in_price)
     if profit > historical_max:
         historical_max = profit
@@ -151,54 +150,25 @@ def short_to_flat(d_price):
         'duration': (current_idx - current_trade['start_time']).total_seconds() / 60,
         'profit': - d_price + in_price
     })
-    in_tick = 0
-    
-def flat_to_wait():
-    global waittime,status
-    waittime=0
-    status=3
-
-def long_to_wait():
-    global waittime1,status
-    waittime1=0
-    status=4
 
 def check_status():
-    global status, tag, next_high, next_low, d_price, in_market, time_to_short, time_to_hold, time_to_long, current_idx, current_trade, varing_rate, close3d, close1d, flat_price,waittime,open_price
-    global in_tick,pre_event,post_event
+    global status, tag, next_high, next_low, d_price, in_market, time_to_short, time_to_hold, time_to_long
     if status == 1:
         if in_market == 0:
-            if varing_rate < 2.2e-7:
-                if tag == 0:
-                    #if next_high<d_price:
-                        flat_to_short(d_price)
-                        time_to_short += 1
-                elif tag == 2:
-                    #if next_low>d_price:
-                    if 'flat_price' in globals():
-                        if low_price<=flat_price*(1-(0.010/100)):
-                            #flat_to_long(flat_price*(1-(0.00/100)))
-                            #if low_price-d_price>0:
-                                #print(f'差异较大 d_price={d_price} low_price={low_price}')
-                            flat_to_wait()
-                            #flat_to_long(d_price)
-                            #time_to_long += 1
-                    else:
-                        flat_to_long(d_price)
-                        time_to_long += 1
-                elif tag == 1:
-                        time_to_hold += 1
-    elif status==3:
-        waittime+=1
-        if waittime>30:
-            flat_to_long(open_price)
-            time_to_long += 1
+            if tag == 0:
+                #if next_high<d_price:
+                    flat_to_short()
+                    time_to_short += 1
+            elif tag == 2:
+                #if next_low>d_price:
+                    flat_to_long()
+                    time_to_long += 1
+            elif tag == 1:
+                    time_to_hold += 1
 
 
 for idx in tqdm(df.index, desc="Processing rows"):
     tag     = df.at[idx, 'prediction_tag']
-    close_price = df.at[idx, 'close']
-    open_price = df.at[idx, 'open']
     d_price = df.at[idx, 'd_price']
     high_price = df.at[idx, 'high']
     low_price = df.at[idx, 'low']
@@ -206,85 +176,42 @@ for idx in tqdm(df.index, desc="Processing rows"):
     next_low = df.at[idx, 'next_low']
     in_market = df.at[idx, 'in_market']
     current_idx = df.at[idx, 'datetime']
-    varing_rate = df.at[idx, 'volweek_raw']
-    close3d = df.at[idx, 'close3d']
-    close1d = df.at[idx, 'close_1380']
-    pre_event = df.at[idx, 'pre_event']
-    post_event = df.at[idx, 'post_event']
-
-    #if idx==df.index[-1]:
-        #long_to_flat(d_price)
+    
+    
     # —— 根据当前状态 status 与当前行的 tag 来决定新的 profit / status / in_price ——
     if status == 1:
-        in_tick += 1
         check_status()
-        if(in_tick>=20):
-            in_tick=0
-            flat_price=low_price
-        
-    elif status==3:
-        in_tick += 1
-        check_status()
-        if(in_tick>=20):
-            in_tick=0
-            flat_price=low_price
 
     elif status == 0:
         in_tick += 1
         if( (high_price-in_price > in_price*short_lose_valve) & (in_price - low_price > in_price*short_win_valve) ): #reaches both win and lose
-            short_to_flat(in_price-in_price*short_win_valve)
-            #check_status()
+            short_to_flat(d_price)
+            check_status()
         elif(in_price - low_price > in_price*short_win_valve): #reaches win only
-            short_to_flat(in_price-in_price*short_win_valve)
-            #check_status()
+            short_to_flat(d_price)
+            check_status()
         #elif(high_price-in_price > in_price*short_lose_valve): #reaches lose only
             #short_to_flat(in_price+in_price*short_lose_valve)
             #check_status()
-        elif(d_price>in_price + in_price*short_win_valve*10 and in_tick>=tick_life_time/2):
-            short_to_flat(d_price)
-            #check_status()
         elif(in_tick>=tick_life_time):
             short_to_flat(d_price)
-            #check_status()
+            check_status()
 
 
     elif status == 2:
         in_tick += 1
         if( (high_price-in_price > in_price*long_win_valve) & (in_price - low_price > in_price*long_lose_valve) ): #reaches both win and lose
-            #long_to_flat(in_price+in_price*long_win_valve)
-            #flat_price=in_price+in_price*long_win_valve
-            #long_to_flat(d_price)
-            #flat_price=d_price
-            #long_to_wait()
             long_to_flat(d_price)
-            flat_price=d_price
+            check_status()
         elif(high_price-in_price > in_price*long_win_valve): #reaches win only
-            #long_to_flat(in_price+in_price*long_win_valve)
-            #flat_price=in_price+in_price*long_win_valve
-            #long_to_flat(d_price)
-            #flat_price=d_price
-            #long_to_wait()
             long_to_flat(d_price)
-            flat_price=d_price
+            check_status()
         #elif(in_price - low_price > in_price*long_lose_valve): #reaches lose only
             #long_to_flat(in_price-in_price*long_lose_valve)
             #check_status()
-        # elif(d_price<in_price - in_price*long_win_valve*10 and in_tick>=tick_life_time/2):
-        #     long_to_flat(d_price)
-        #     flat_price=d_price
-            #check_status()
-        elif(in_tick>=tick_life_time or in_market==1):
+        elif(in_tick>=tick_life_time):
             long_to_flat(d_price)
-            flat_price=d_price
-            #check_status()
-
-    elif status == 4:
-        waittime1+=1
-        if waittime1>1:
-            long_to_flat(open_price)
-            flat_price=open_price
-
-    
+            check_status()
 
 profit=profit/ref_price
 max_back=max_back/ref_price
@@ -364,5 +291,3 @@ ax1.legend(lines1 + lines2, labels1 + labels2, loc='upper left')
 fig.autofmt_xdate()
 plt.tight_layout()
 plt.show()
-# 循环结束后，df 的这三列就已经记录了每一步的变化
-# 如果你只关心最后的 profit，可以直接用外部变量 profit；否则可以看 df['profit'].iloc[-1]。

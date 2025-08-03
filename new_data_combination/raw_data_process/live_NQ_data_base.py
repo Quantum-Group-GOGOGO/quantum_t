@@ -14,6 +14,7 @@ from zoneinfo import ZoneInfo
 import asyncio
 from preallocdataframe import PreallocDataFrame
 from t2_processor import live_t2
+import trading_status
 
 
 class nq_live_t0:
@@ -25,6 +26,7 @@ class nq_live_t0:
         self.last_minute_contract_num=self.current_num
         self.load_NQ_harddisk()
         self.sync_NQ_base()
+        self.using_contract=Future(symbol='NQ',exchange='CME',currency='USD',lastTradeDateOrContractMonth=self.current_using_IBKR_tick_str)
         print(f'NQ  T0处理器初始化完成   {datetime.now()}')
  
     def link_t2obj(self, t2_processor:live_t2):#只允许被link_sub函数调用
@@ -266,6 +268,24 @@ class nq_live_t0:
             else:
                 return now.year,season
 
+    def calculate_current_using_contract_year_season(now):
+        if now.month==1 or now.month==2:
+            return now.year,0
+        elif now.month==4 or now.month==5:
+            return now.year,1
+        elif now.month==7 or now.month==8:
+            return now.year,2
+        elif now.month==10 or now.month==11:
+            return now.year,3
+        else:
+            season=(now.month//3)-1
+            if rtt.is_trigger_day2_pass():
+                season=season+1
+            if season>3:
+                return now.year+1,0
+            else:
+                return now.year,season
+            
     def format_contract(self,year: int, season: int) -> str:
         """
         根据年份和季节序号生成期货合约代码。
@@ -315,6 +335,19 @@ class nq_live_t0:
     def check_next_memory(self):
         self.next_contract_data.ensure_capacity()
 
+    def heartbeat_live_change(self):
+        self.now=datetime.now(ZoneInfo('America/New_York'))
+        self.current_year,self.current_season=self.calculate_current_contract_year_season(self.now)
+        self.current_num=self.yearseason_to_int(self.current_year,self.current_season)
+        if self.current_num != self.last_minute_contract_num:
+            os.execv(sys.executable, [sys.executable] + sys.argv)
+
+        if self.current_using_num != self.yearseason_to_int(*self.calculate_current_contract_year_season(self.now)):
+            self.current_using_num = self.yearseason_to_int(*self.calculate_current_contract_year_season(self.now))
+            self.current_using_IBKR_tick_str=self.calculate_contract_month_symbol(*self.calculate_current_contract_year_season(self.now))
+            self.current_using_contract=Future(symbol='NQ',exchange='CME',currency='USD',lastTradeDateOrContractMonth=self.current_using_IBKR_tick_str)
+            self.t2_p.live_change_using()
+
     def sync_param(self):
         global live_data_base
         self.now=datetime.now(ZoneInfo('America/New_York'))
@@ -322,11 +355,17 @@ class nq_live_t0:
         self.current_num=self.yearseason_to_int(self.current_year,self.current_season)
         self.next_num=self.current_num+1
         self.next_year,self.next_season=self.int_to_yearseason(self.next_num)
+        #计算当前拼接用的合约
+        self.current_using_year,self.current_using_season=self.calculate_current_contract_year_season(self.now)
+        self.current_using_num=self.yearseason_to_int(self.current_using_year,self.current_using_season)
         #计算出当前期的期货合约和下个季度的期货合约
         self.current_file_str=self.format_contract(self.current_year,self.current_season)
         self.next_file_str=self.format_contract(self.next_year,self.next_season)
         self.current_IBKR_tick_str=self.calculate_contract_month_symbol(self.current_year,self.current_season)
         self.next_IBKR_tick_str=self.calculate_contract_month_symbol(self.next_year,self.next_season)
+        self.current_using_IBKR_tick_str=self.calculate_contract_month_symbol(self.current_using_year,self.current_using_season)
+        self.current_using_contract=Future(symbol='NQ',exchange='CME',currency='USD',lastTradeDateOrContractMonth=self.current_using_IBKR_tick_str)
+        
         #检查路径和文件是否存在
         self.NQ_type0_path=live_data_base+'/type0/NQ/'
         self.current_filename = 'NQBASE'+self.current_file_str+'.pkl'
@@ -383,6 +422,7 @@ class nq_live_t0:
             #文件不存在，直接读入1000天的live数据构造
             self.next_contract_data=PreallocDataFrame(self.request_many_day_NQ(1000,self.next_num))
             self.next_contract_data.to_dataframe().to_pickle(self.NQ_type0_path+self.next_filename)
+        
 
     async def sync_NQ_baseAsync(self):
         fullpath = os.path.join(self.NQ_type0_path, self.current_filename)
@@ -418,7 +458,7 @@ class nq_live_t0:
     async def minute_march(self):#每分钟需要做的事情
         current=self.current_filename
         next=self.next_filename
-        self.sync_param()
+        self.heartbeat_live_change()
         if self.last_minute_contract_num != self.current_num:
             self.live_change=1 #是否发生在线状态下的合约转变
             self.last_minute_contract_num=self.current_num
@@ -443,7 +483,7 @@ class nq_live_t0:
             self.fast_concat(self.next_contract_data,df)
             
     async def fast_march(self,datetime_,open_,high_,low_,close_,volume_,current_): 
-        self.sync_param()
+        self.heartbeat_live_change()
         if current_==1:
             last_BASE_time=self.current_contract_data.index[-1]
         else:
@@ -465,21 +505,26 @@ class nq_live_t0:
             if current_ == 1:
                 self.fast_concat(self.current_contract_data, new_row)
                 print(f'{datetime.now()}  NQ当前1分钟连续数据处理完毕：{datetime_} {open_} {high_} {low_} {close_} {volume_}')
-                t2_p.fast_march(datetime_,open_,high_,low_,close_,volume_,1)
+                await self.t2_p.fast_march(datetime_,open_,high_,low_,close_,volume_,1,True)
+                #self.t2_p.slow_march()
             else:
                 self.fast_concat(self.next_contract_data, new_row)
                 print(f'{datetime.now()}  NQ下季1分钟连续数据处理完毕：{datetime_} {open_} {high_} {low_} {close_} {volume_}')
-                t2_p.fast_march(datetime_,open_,high_,low_,close_,volume_,2)
+                await self.t2_p.fast_march(datetime_,open_,high_,low_,close_,volume_,2,True)
+                #self.t2_p.slow_march()
             
         elif minute<1440:
             if current_==1:
                 df=await self.request_many_min_NQAsync(minute+1,self.current_num)
                 self.fast_concat_savemain(self.current_contract_data, df)
-                print(f'{datetime.now()}  NQ当前{minute}分钟不连续数据处理完毕：{self.current_contract_data.tail()}')
+                print(f'{datetime.now()}  NQ当前{minute}分钟不连续数据处理完毕')
+                await self.t2_p.multi_fast_march(1,True)
             else:
                 df=await self.request_many_min_NQAsync(minute+1,self.next_num)
                 self.fast_concat_savemain(self.next_contract_data, df)
-                print(f'{datetime.now()}  NQ下季{minute}分钟不连续数据处理完毕：{self.next_contract_data.tail()}')
+                print(f'{datetime.now()}  NQ下季{minute}分钟不连续数据处理完毕')
+                await self.t2_p.multi_fast_march(2,True)
+                #self.t2_p.minute_march(df,2)
 
         else:
             days=minute//1440
@@ -487,10 +532,12 @@ class nq_live_t0:
                 df=await self.request_many_day_NQAsync(days+1,self.current_num)
                 self.fast_concat_savemain(self.current_contract_data, df)
                 print(f'{datetime.now()}  NQ当前{days}日不连续数据处理完毕：{self.current_contract_data.tail()}')
+                self.t2_p.slow_march()
             else:
                 df=await self.request_many_day_NQAsync(days+1,self.next_num)
                 self.fast_concat_savemain(self.next_contract_data, df)
                 print(f'{datetime.now()}  NQ下季{days}日不连续数据处理完毕：{self.current_contract_data.tail()}')
+                self.t2_p.slow_march()
 
     def _safe_reqHistorical(self, contract, **kwargs):
         """

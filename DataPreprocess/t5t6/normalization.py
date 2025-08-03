@@ -78,7 +78,7 @@ df=pd.read_pickle(T5_data_path)
 print(df['volume'].head())
 print(df.columns)
 #print(df.describe())
-
+df['volumeO']=df['volume'].copy()
 #指数归一化
 #sf越大，归一化越靠近1
 #sf越小，归一化越靠近0

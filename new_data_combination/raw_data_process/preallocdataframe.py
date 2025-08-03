@@ -100,6 +100,110 @@ class PreallocDataFrame:
         # 3) 指针后移
         self._ptr += 1
 
+    def append_row_keep_first(self, dt: pd.Timestamp, values: Sequence[float]):
+        """
+        只有当 dt 不等于最后一行的索引时，才 append；
+        如果相同，则保留已有的（first）不做任何操作。
+        """
+        # 如果已有行且最后一行索引和 dt 相同，就直接 return
+        if self._ptr > 0 and self._index[self._ptr - 1] >= np.datetime64(dt):
+            print('低权限不被覆写')
+            return
+        # 否则调用原本的 append_row
+        print('新来的QQQ')
+        self.append_row(dt, values)
+
+    def append_row_keep_last(self, dt: pd.Timestamp, values: Sequence[float]):
+        """
+        如果 dt 等于最后一行的索引，就用新 values 覆盖最后一行（keep last）；
+        否则正常 append。
+        """
+        if self._ptr > 0 and self._index[self._ptr - 1] == np.datetime64(dt):
+            # 直接覆盖最后一行的数据
+            self._data[self._ptr - 1, :] = values
+            print('高权限被覆写')
+        else:
+            # 正常追加
+            #print('新来的NQ')
+            self.append_row(dt, values)
+
+
+    def insert_row_keep_first(self, dt: pd.Timestamp, values: Sequence[float]):
+        """
+        在保持升序的前提下插入一行：
+        - 如果 dt 已经存在，什么都不做（保留原有第一条）
+        - 否则把新行插入到正确的时间顺序位置
+        """
+        ts = np.datetime64(dt)
+
+        # 1) 用 numpy 在已用索引里定位插入点
+        used = self._index[:self._ptr]
+        pos = np.searchsorted(used, ts)
+
+        # 2) 如果 pos 指向的就是相同时间戳，则跳过
+        if pos < self._ptr and used[pos] == ts:
+            return
+
+        # 3) 扩容检查
+        if self._ptr + 1 > self.capacity:
+            self._resize(extra=self.buff_size)
+
+        # 4) 从 pos 到 ptr-1 的数据往后移一格
+        self._data[pos + 1 : self._ptr + 1] = self._data[pos : self._ptr]
+        self._index[pos + 1 : self._ptr + 1] = self._index[pos : self._ptr]
+
+        # 5) 在 pos 处写入新行
+        self._index[pos] = ts
+        self._data[pos, :] = values
+
+        # 6) 指针后移
+        self._ptr += 1
+
+    def insert_row_keep_last(self, dt: pd.Timestamp, values: Sequence[float]):
+        """
+        在保持升序的前提下插入或替换一行：
+        - 如果 dt 已经存在，则用新 values 覆盖那一行（保留最新）
+        - 否则把新行插入到正确的时间顺序位置
+        """
+        ts = np.datetime64(dt)
+
+        # 1) 定位潜在插入/替换点
+        used = self._index[:self._ptr]
+        pos = np.searchsorted(used, ts)
+
+        # 2) 如果正好相同，覆盖那一行
+        if pos < self._ptr and used[pos] == ts:
+            self._data[pos, :] = values
+            return
+
+        # 3) 扩容检查
+        if self._ptr + 1 > self.capacity:
+            self._resize(extra=self.buff_size)
+
+        # 4) 数据往后移
+        self._data[pos + 1 : self._ptr + 1] = self._data[pos : self._ptr]
+        self._index[pos + 1 : self._ptr + 1] = self._index[pos : self._ptr]
+
+        # 5) 插入新行
+        self._index[pos] = ts
+        self._data[pos, :] = values
+
+        # 6) 指针后移
+        self._ptr += 1
+
+    def drop_index_duplicates(self, keep='first') -> 'PreallocDataFrame':
+        # 先生成一个纯 Pandas DataFrame
+        pdf = self.to_dataframe()
+        # 按索引去重
+        dedup = pdf.loc[~pdf.index.duplicated(keep=keep)]
+        # 用同样的 capacity 构造一个新的 PreallocDataFrame
+        new = PreallocDataFrame(dedup, capacity=self.capacity)
+        return new
+    
     def __getattr__(self, name):
         """Delegate other attributes/methods to the current DataFrame"""
         return getattr(self.to_dataframe(), name)
+    
+    def __getitem__(self, key):
+        # 把所有下标访问都转给 pandas.DataFrame
+        return self.to_dataframe().__getitem__(key)

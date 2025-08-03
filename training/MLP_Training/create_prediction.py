@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # inference.py
-
+from env import *
 import argparse
 import torch
 import pandas as pd
