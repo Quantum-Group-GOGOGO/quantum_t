@@ -54,7 +54,10 @@ class qqq_live_t0:
                 dfs = df
             else:
                 dfs = pd.concat([df, dfs])
-        dfs = dfs[~dfs.index.duplicated(keep='last')]        
+        dfs = dfs[~dfs.index.duplicated(keep='last')]      
+        idx = dfs.index
+        if idx.tz is not None:
+            dfs.index = idx.tz_localize(None)  
         return dfs
 
     async def request_many_day_QQQAsync(self,daysN):
@@ -81,7 +84,10 @@ class qqq_live_t0:
                 dfs = df
             else:
                 dfs = pd.concat([df, dfs])
-        dfs = dfs[~dfs.index.duplicated(keep='last')]        
+        dfs = dfs[~dfs.index.duplicated(keep='last')]   
+        idx = dfs.index
+        if idx.tz is not None:
+            dfs.index = idx.tz_localize(None)     
         return dfs
 
     def request_1_day_QQQ(self):
@@ -99,6 +105,9 @@ class qqq_live_t0:
         df.set_index('date', inplace=True)
         df.index.rename('datetime', inplace=True)
         df['volume'] = df['volume'] * 100
+        idx = df.index
+        if idx.tz is not None:
+            df.index = idx.tz_localize(None)
         return df
     
     async def request_1_day_QQQAsync(self):
@@ -116,6 +125,9 @@ class qqq_live_t0:
         df.set_index('date', inplace=True)
         df.index.rename('datetime', inplace=True)
         df['volume'] = df['volume'] * 100
+        idx = df.index
+        if idx.tz is not None:
+            df.index = idx.tz_localize(None)
         return df
 
     def request_many_min_QQQ(self,minute):
@@ -134,6 +146,9 @@ class qqq_live_t0:
         df.set_index('date', inplace=True)
         df.index.rename('datetime', inplace=True)
         df['volume'] = df['volume'] * 100
+        idx = df.index
+        if idx.tz is not None:
+            df.index = idx.tz_localize(None)
         return df
     
     async def request_many_min_QQQAsync(self,minute):
@@ -152,6 +167,9 @@ class qqq_live_t0:
         df.set_index('date', inplace=True)
         df.index.rename('datetime', inplace=True)
         df['volume'] = df['volume'] * 100
+        idx = df.index
+        if idx.tz is not None:
+            df.index = idx.tz_localize(None)
         return df
 
     def fast_concat(self,main_data_base,new_data_base): #在大数据集main_data_base下方拼接new_data_base，并去掉重复部分，main和new都必须是时间升序排序完成的

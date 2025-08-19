@@ -116,6 +116,7 @@ def subscribe_contract(nqt0:nq_live_t0,qqqt0:qqq_live_t0,ib:IB,bars_list:list):
     bars = ib.reqRealTimeBars(contract_QQQ, barSize=5, whatToShow='TRADES', useRTH=False)
     bars.updateEvent += lambda barsList, hasNew: asyncio.create_task(onBar_QQQ(qqqt0, ib, qqq_bars, barsList, hasNew))
     bars_list.append(bars)
+    print('订阅完成')
     return bars_list
 
 # 回调：打印实时价，整分钟时触发历史请求

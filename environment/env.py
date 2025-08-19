@@ -10,7 +10,7 @@ if os_name == 'MACOS_Laptop':
     project_base = '/Users/wentianwang/Soft/Quantum/quantum_t'
     localhost='127.0.0.1'
 elif os_name == 'Windows_Desktop':
-    print('Configuration to Home Desktop')
+    print('Configuration to Home Desktop Windows')
     data_base = 'D:/quantum/quantum_t_data/quantum_t_data'
     live_data_base = 'D:/quantum/quantum_t_data/quantum_t_live_data'
     project_base = 'D:/quantum/quantum_t/'
@@ -22,6 +22,12 @@ elif os_name == 'HOME_WINDOWS_WSL':
     project_base = '/mnt/d/quantum/quantum_t/'
     localhost=os.getenv('local_IP', '')
     #localhost='127.0.0.1'
+elif os_name == 'Ubuntu_Desktop':
+    print('Configuration to Home Desktop Ubuntu')
+    data_base = '/mnt/gdrive/quantum_t_data'
+    live_data_base = '/mnt/gdrive/quantum_t_live_data'
+    project_base = '/mnt/gdrive/'
+    localhost='127.0.0.1'
 else:
     raise ValueError("Unknown Environment, Please setup the environment variable: PYTHON_HARDWARE")
 

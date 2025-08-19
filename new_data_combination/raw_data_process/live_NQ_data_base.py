@@ -64,6 +64,9 @@ class nq_live_t0:
                 elif df is not None:
                     dfs = pd.concat([df, dfs])
             dfs = dfs[~dfs.index.duplicated(keep='last')]
+            idx = dfs.index
+            if idx.tz is not None:
+                dfs.index = idx.tz_localize(None)
             self.new_data=dfs
             #print(self.new_data.head())
             #return dfs
@@ -83,6 +86,9 @@ class nq_live_t0:
         df = util.df(bars)[['date', 'open', 'high', 'low', 'close', 'volume']]
         df.set_index('date', inplace=True)
         df.index.rename('datetime', inplace=True)
+        idx = df.index
+        if idx.tz is not None:
+            df.index = idx.tz_localize(None)
         return df
 
     async def request_10_min_NQAsync(self,num):
@@ -100,6 +106,9 @@ class nq_live_t0:
         df = util.df(bars)[['date', 'open', 'high', 'low', 'close', 'volume']]
         df.set_index('date', inplace=True)
         df.index.rename('datetime', inplace=True)
+        idx = df.index
+        if idx.tz is not None:
+            df.index = idx.tz_localize(None)
         return df
 
     async def request_many_min_NQAsync(self,minute,num):
@@ -119,6 +128,9 @@ class nq_live_t0:
         df = util.df(bars)[['date', 'open', 'high', 'low', 'close', 'volume']]
         df.set_index('date', inplace=True)
         df.index.rename('datetime', inplace=True)
+        idx = df.index
+        if idx.tz is not None:
+            df.index = idx.tz_localize(None)
         return df
             
 
@@ -156,6 +168,9 @@ class nq_live_t0:
             dfs = dfs[~dfs.index.duplicated(keep='last')]
             #self.new_data=dfs
             #print(self.new_data.head())
+            idx = dfs.index
+            if idx.tz is not None:
+                dfs.index = idx.tz_localize(None)
             return dfs
 
     def request_1_day_NQ(self,num):
@@ -173,6 +188,9 @@ class nq_live_t0:
         df = util.df(bars)[['date', 'open', 'high', 'low', 'close', 'volume']]
         df.set_index('date', inplace=True)
         df.index.rename('datetime', inplace=True)
+        idx = df.index
+        if idx.tz is not None:
+            df.index = idx.tz_localize(None)
         return df
 
     def request_10_min_NQ(self,num):
@@ -190,6 +208,9 @@ class nq_live_t0:
         df = util.df(bars)[['date', 'open', 'high', 'low', 'close', 'volume']]
         df.set_index('date', inplace=True)
         df.index.rename('datetime', inplace=True)
+        idx = df.index
+        if idx.tz is not None:
+            df.index = idx.tz_localize(None)
         return df
 
     def request_many_min_NQ(self,minute,num):
@@ -209,6 +230,9 @@ class nq_live_t0:
         df = util.df(bars)[['date', 'open', 'high', 'low', 'close', 'volume']]
         df.set_index('date', inplace=True)
         df.index.rename('datetime', inplace=True)
+        idx = df.index
+        if idx.tz is not None:
+            df.index = idx.tz_localize(None)
         return df
     
     def yearseason_to_int(self,year,season):
