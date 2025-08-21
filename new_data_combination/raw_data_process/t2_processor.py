@@ -399,7 +399,7 @@ class live_t2:
         self.t0_QQQ_file=live_data_base+'/type0/QQQ/QQQ_BASE.pkl'
         self.T2Base=PreallocDataFrame(pd.read_pickle(self.t2_file))
         
-        self.T2Base=self.T2Base.head(400000)
+        self.T2Base=self.T2Base.head(4000000)
         self.QQQT0=PreallocDataFrame(pd.read_pickle(self.t0_QQQ_file))
         self.initial_dataBase()
 
@@ -605,11 +605,6 @@ class live_t2:
             delta = time - prev_time
             if delta > pd.Timedelta(minutes=1):
                 t1=calculate_t1t2(merged_df,time)
-                
-                print(merged_df.head())
-                print(merged_df.tail())
-                print(t1)
-                print(time)
                 t2=calculate_t1t2(merged_df,t1)
                 t3=previous_break2(merged_df,t1)
                 NQvol=sum_volume_between(merged_df,t1,t3,'volume_NQ')
