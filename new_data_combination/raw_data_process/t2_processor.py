@@ -399,7 +399,7 @@ class live_t2:
         self.t0_QQQ_file=live_data_base+'/type0/QQQ/QQQ_BASE.pkl'
         self.T2Base=PreallocDataFrame(pd.read_pickle(self.t2_file))
         
-        self.T2Base=self.T2Base.head(400000)
+        self.T2Base=self.T2Base.head(800000)
         self.QQQT0=PreallocDataFrame(pd.read_pickle(self.t0_QQQ_file))
         self.initial_dataBase()
 
