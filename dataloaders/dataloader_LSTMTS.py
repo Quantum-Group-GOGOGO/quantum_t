@@ -48,45 +48,73 @@ class TimeSeriesLSTMTSDataset(Dataset):
         #return 1000
 
     def __getitem__(self, idx):
-        # 计算尾端索引为idx往后数 sequence_length_1380 * 1380 的位置
+        # 计算尾端索引
         end_idx = idx + self.sequence_length_1380 * 1380
 
-        # 根据尾端索引往前取对应长度，确保所有序列尾端对齐
-        high_1 = self.high[end_idx - self.sequence_length_1 + 1:end_idx + 1]
-        low_1 = self.low[end_idx - self.sequence_length_1 + 1:end_idx + 1]
-        open_1 = self.open[end_idx - self.sequence_length_1 + 1:end_idx + 1]
-        close_1 = self.close[end_idx - self.sequence_length_1 + 1:end_idx + 1]
-        close_10 = self.close_10[end_idx - (self.sequence_length_10 - 1) * 10:end_idx + 1:10]
-        close_60 = self.close_60[end_idx - (self.sequence_length_60 - 1) * 60:end_idx + 1:60]
-        close_240 = self.close_240[end_idx - (self.sequence_length_240 - 1) * 240:end_idx + 1:240]
-        close_1380 = self.close_1380[end_idx - (self.sequence_length_1380 - 1) * 1380:end_idx + 1:1380]
+        # ---- 价格序列（按不同步长） ----
+        high_1  = self.high[end_idx - self.sequence_length_1 + 1 : end_idx + 1]
+        low_1   = self.low[end_idx - self.sequence_length_1 + 1 : end_idx + 1]
+        open_1  = self.open[end_idx - self.sequence_length_1 + 1 : end_idx + 1]
+        close_1 = self.close[end_idx - self.sequence_length_1 + 1 : end_idx + 1]
 
-        # 对时间序列进行归一化
-        high_1 = self.normalize_asyseries_1(high_1,close_1)
-        low_1 = self.normalize_asyseries_1(low_1,close_1)
-        open_1 = self.normalize_asyseries_1(open_1,close_1)
-        close_1 = self.normalize_series1(close_1)
-        close_10 = self.normalize_series10(close_10)
-        close_60 = self.normalize_series60(close_60)
-        close_240 = self.normalize_series240(close_240)
-        close_1380 = self.normalize_series1380(close_1380)
+        close_10   = self.close_10[  end_idx - (self.sequence_length_10  - 1) * 10   : end_idx + 1 : 10]
+        close_60   = self.close_60[  end_idx - (self.sequence_length_60  - 1) * 60   : end_idx + 1 : 60]
+        close_240  = self.close_240[ end_idx - (self.sequence_length_240 - 1) * 240  : end_idx + 1 : 240]
+        close_1380 = self.close_1380[end_idx - (self.sequence_length_1380- 1) * 1380 : end_idx + 1 : 1380]
 
-        # 根据尾端索引往前取对应长度，确保所有序列尾端对齐
-        volume_1 = self.volume[end_idx - self.sequence_length_1 + 1:end_idx + 1]
-        volume_10 = self.volume_10[end_idx - (self.sequence_length_10 - 1) * 10:end_idx + 1:10]
-        volume_60 = self.volume_60[end_idx - (self.sequence_length_60 - 1) * 60:end_idx + 1:60]
-        volume_240 = self.volume_240[end_idx - (self.sequence_length_240 - 1) * 240:end_idx + 1:240]
-        volume_1380 = self.volume_1380[end_idx - (self.sequence_length_1380 - 1) * 1380:end_idx + 1:1380]
+        # ---- 归一化（全部保证为 float32 ndarray）----
+        high_1  = np.asarray(self.normalize_asyseries_1(high_1,  close_1),  dtype=np.float32)
+        low_1   = np.asarray(self.normalize_asyseries_1(low_1,   close_1),  dtype=np.float32)
+        open_1  = np.asarray(self.normalize_asyseries_1(open_1,  close_1),  dtype=np.float32)
+        close_1 = np.asarray(self.normalize_series1(close_1),               dtype=np.float32)
+        close_10   = np.asarray(self.normalize_series10(close_10),          dtype=np.float32)
+        close_60   = np.asarray(self.normalize_series60(close_60),          dtype=np.float32)
+        close_240  = np.asarray(self.normalize_series240(close_240),        dtype=np.float32)
+        close_1380 = np.asarray(self.normalize_series1380(close_1380),      dtype=np.float32)
 
-        # 加载协变量
-        auxiliary_data_current = self.auxiliary_data[end_idx]
+        # ---- 成交量序列 ----
+        volume_1   = self.volume[      end_idx - self.sequence_length_1 + 1 : end_idx + 1]
+        volume_10  = self.volume_10[   end_idx - (self.sequence_length_10  - 1) * 10   : end_idx + 1 : 10]
+        volume_60  = self.volume_60[   end_idx - (self.sequence_length_60  - 1) * 60   : end_idx + 1 : 60]
+        volume_240 = self.volume_240[  end_idx - (self.sequence_length_240 - 1) * 240  : end_idx + 1 : 240]
+        volume_1380= self.volume_1380[ end_idx - (self.sequence_length_1380- 1) * 1380 : end_idx + 1 : 1380]
 
-        #加评测值
+        volume_1    = np.asarray(volume_1,    dtype=np.float32)
+        volume_10   = np.asarray(volume_10,   dtype=np.float32)
+        volume_60   = np.asarray(volume_60,   dtype=np.float32)
+        volume_240  = np.asarray(volume_240,  dtype=np.float32)
+        volume_1380 = np.asarray(volume_1380, dtype=np.float32)
+
+        # ---- 协变量 / 评测 ----
+        # evaluation_data: 如果是 ['tag']，则 end_idx 后得到形状 (1,)
         evaluation_data_current = self.evaluation_data[end_idx]
+        evaluation_data_current = np.asarray(evaluation_data_current, dtype=np.float32).reshape(-1)
 
-        return (close_1, close_10, close_60, close_240, close_1380,
-                volume_1, volume_10, volume_60, volume_240, volume_1380, evaluation_data_current, auxiliary_data_current, high_1, low_1, open_1)
-    
+        auxiliary_data_current  = self.auxiliary_data[end_idx]
+        auxiliary_data_current  = np.asarray(auxiliary_data_current,  dtype=np.float32).reshape(-1)
+
+        # ---- 统一转成 torch.float32 ----
+        def to_t(x):
+            # 所有 numpy 数组 / 标量都转张量；若不小心传入了“类型对象”，这里会报清楚的错
+            if isinstance(x, type):
+                raise TypeError(f"Detected a dtype/type object in dataset output: {x}. "
+                                f"Return values (arrays/scalars), not types.")
+            if isinstance(x, np.generic):  # numpy 标量
+                x = np.asarray(x, dtype=np.float32)
+            if isinstance(x, np.ndarray):
+                return torch.from_numpy(x).to(torch.float32)
+            if isinstance(x, (float, int)):
+                return torch.tensor(x, dtype=torch.float32)
+            # 其它类型（极少见）统一兜底
+            return torch.as_tensor(x, dtype=torch.float32)
+
+        return (
+            to_t(close_1), to_t(close_10), to_t(close_60), to_t(close_240), to_t(close_1380),
+            to_t(volume_1), to_t(volume_10), to_t(volume_60), to_t(volume_240), to_t(volume_1380),
+            to_t(evaluation_data_current), to_t(auxiliary_data_current),
+            to_t(high_1), to_t(low_1), to_t(open_1),
+        )
+        
     def normalize_asyseries_1(self, series, asyseries):
         # 使用最后一个点作为基准进行归一化
         last_value = asyseries[-1]

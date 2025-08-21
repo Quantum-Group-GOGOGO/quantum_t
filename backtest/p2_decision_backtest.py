@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 
 labeled_result_path= data_base + "/type_p1/1.9+-0.095.pkl"
 df = pd.read_pickle(labeled_result_path)
-df['in_market'] = df['datetime'].dt.time.between(time(10, 20), time(16, 0)).astype(int)
+df['in_market'] = df['datetime'].dt.time.between(time(9, 31), time(16, 0)).astype(int)
 df['d_price'] = df['open'].shift(-1)
 #df['d_price'] = df['close']
 df['next_high'] = df['high'].shift(-1)
@@ -212,7 +212,8 @@ for idx in tqdm(df.index, desc="Processing rows"):
     close1d = df.at[idx, 'close_1380']
     pre_event = df.at[idx, 'pre_event']
     post_event = df.at[idx, 'post_event']
-    vwap=df.at[idx, 'vwap']
+    #vwap=df.at[idx, 'vwap']
+    vwap=df.at[idx, 'vwap_0930']
     #if idx==df.index[-1]:
         #long_to_flat(d_price)
     # —— 根据当前状态 status 与当前行的 tag 来决定新的 profit / status / in_price ——
