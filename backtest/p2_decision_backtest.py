@@ -43,6 +43,9 @@ short_lose_time=0
 d_price = 0
 in_tick = 0
 historical_max = 0
+money = 10000
+position = 0
+lv = 3.0
 max_back = 0
 time_to_long = 0
 time_to_short = 0
@@ -79,7 +82,7 @@ def commission_calculation_MNQ(trades):
     return (commission+CME_NFA_commission+spread)/trades
 
 def flat_to_long(price):
-    global profit, status, in_price, trade, long_profit, short_profit, d_price, in_tick, current_idx,current_trade
+    global profit, status, in_price, trade, long_profit, short_profit, d_price, in_tick, current_idx,current_trade,money,position,lv
     status = 2
     in_price = price
     in_tick = 0
@@ -88,9 +91,10 @@ def flat_to_long(price):
         'start_time': current_idx,
         'start_price': in_price
     }
+    position = lv*money/price
 
 def flat_to_short(price):
-    global profit, status, in_price, trade, long_profit, short_profit, d_price, in_tick, current_idx,current_trade
+    global profit, status, in_price, trade, long_profit, short_profit, d_price, in_tick, current_idx,current_trade,money,position,lv
     status = 0
     in_price = price
     in_tick = 0
@@ -99,17 +103,19 @@ def flat_to_short(price):
         'start_time': current_idx,
         'start_price': in_price
     }
+    position = lv*money/price
 
 def long_to_flat(d_price):
-    global profit, status, in_price, trade, long_profit, short_profit,long_win,long_lose,long_win_time,long_lose_time, historical_max, max_back, current_idx,current_trade, in_tick
-    profit += (d_price - in_price)
-    if profit > historical_max:
-        historical_max = profit
-    if profit < historical_max:
-        callback = historical_max - profit
+    global profit, status, in_price, trade, long_profit, short_profit,long_win,long_lose,long_win_time,long_lose_time, historical_max, max_back, current_idx,current_trade, in_tick,money,position,lv
+    profit += (d_price - in_price) * position
+    money += (d_price - in_price) * position
+    if money > historical_max:
+        historical_max = money
+    if money < historical_max:
+        callback = (historical_max - money)/historical_max
         if callback > max_back:
             max_back = callback
-    long_profit += (d_price - in_price)
+    long_profit += (d_price - in_price) * position
     if d_price - in_price>0:
         long_win += d_price - in_price
         long_win_time += 1
@@ -123,20 +129,21 @@ def long_to_flat(d_price):
         'start_time': current_trade['start_time'],
         'end_time': current_idx,
         'duration': (current_idx - current_trade['start_time']).total_seconds() / 60,  # 单位：分钟
-        'profit': d_price - in_price
+        'profit': (d_price - in_price) * position/10000
     })
     in_tick = 0
 
 def short_to_flat(d_price):
-    global profit, status, in_price, trade, long_profit, short_profit,short_win,short_lose,short_win_time,short_lose_time, historical_max, max_back, current_idx,current_trade, in_tick
-    profit -= (d_price - in_price)
-    if profit > historical_max:
-        historical_max = profit
-    if profit < historical_max:
-        callback = historical_max - profit
+    global profit, status, in_price, trade, long_profit, short_profit,short_win,short_lose,short_win_time,short_lose_time, historical_max, max_back, current_idx,current_trade, in_tick,money,position,lv
+    profit -= (d_price - in_price) * position
+    money -= (d_price - in_price) * position
+    if money > historical_max:
+        historical_max = money
+    if money < historical_max:
+        callback = (historical_max - money)/historical_max
         if callback > max_back:
             max_back = callback
-    short_profit -= (d_price - in_price)
+    short_profit -= (d_price - in_price) * position
     if d_price - in_price < 0:
         short_win -= d_price - in_price
         short_win_time += 1
@@ -150,7 +157,7 @@ def short_to_flat(d_price):
         'start_time': current_trade['start_time'],
         'end_time': current_idx,
         'duration': (current_idx - current_trade['start_time']).total_seconds() / 60,
-        'profit': - d_price + in_price
+        'profit': (- d_price + in_price) * position/10000
     })
     in_tick = 0
     
@@ -252,10 +259,9 @@ for idx in tqdm(df.index, desc="Processing rows"):
             long_to_flat(d_price)
     
 
-profit=profit/ref_price
-max_back=max_back/ref_price
-long_profit=long_profit/ref_price
-short_profit=short_profit/ref_price
+profit=profit
+long_profit=long_profit
+short_profit=short_profit
 monthly_trades=trade/28.8
 average_cost_MNQ=commission_calculation_MNQ(monthly_trades)
 average_cost_NQ=commission_calculation_NQ(monthly_trades)
@@ -281,6 +287,7 @@ print('time to hold: ',time_to_hold)
 print('time to short: ',time_to_short)
 print('total profit: ',profit)
 print('max_back: ',max_back)
+print('money: ', money)
 print('total consume MNQ: ',trade*average_cost_MNQ/43464.50)
 print('total consume NQ: ',trade*average_cost_NQ/434645.0)
 
