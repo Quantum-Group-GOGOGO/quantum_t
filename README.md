@@ -84,12 +84,6 @@ python backtest/run_backtest.py --model checkpoints/model_latest.pt
 
 ---
 
-## 🤝 Author
-
-Wentian Wang littlenova223@gmail.com
-
----
-
 ## 📜 License
 
 This project is released under the **MIT License**.  
@@ -98,4 +92,4 @@ See the [`LICENSE`](LICENSE) file for details.
 ---
 
 
-✳️ Maintainer: [Quantum Group](https://github.com/Quantum-Group-GOGOGO)
+✳️ Maintainer: [Quantum Group](https://github.com/Quantum-Group-GOGOGO) Wentian Wang
