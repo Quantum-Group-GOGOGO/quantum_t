@@ -49,10 +49,6 @@ quantum_t/
 ```bash
 git clone https://github.com/Quantum-Group-GOGOGO/quantum_t.git
 cd quantum_t
-
-python -m venv venv
-source venv/bin/activate   # Windows: venv\Scripts\activate
-
 pip install -r requirements.txt
 ```
 
