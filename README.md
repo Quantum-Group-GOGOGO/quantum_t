@@ -1,7 +1,7 @@
 # quantum_t
 
 A quantitative-trading framework built with **Python** and **PyTorch**, designed for high-frequency futures data.  
-It supports full-cycle development — data collection, preprocessing, model training (LSTM / MLP / Transformer), and back-testing — in a modular and reproducible way.
+It supports full-cycle development — data collection, preprocessing, model training (LSTM / MLP / Transformer), and back-testing — in a modular and reproducible way. Data collection needs to work with IB_gateway using a proper username and password.
 
 ---
 
@@ -77,30 +77,6 @@ python backtest/run_backtest.py --model checkpoints/model_latest.pt
 
 ---
 
-## 📊 Example (Python API)
-
-```python
-from models import TransformerEncoder
-from training import Trainer
-from backtest import Backtester
-
-# Load data
-loader = DataLoader(...)
-train_data, test_data = loader.load()
-
-# Train model
-model = TransformerEncoder(...)
-trainer = Trainer(model, train_data)
-trainer.train(epochs=50)
-
-# Backtest
-backtester = Backtester(model, test_data)
-results = backtester.run()
-print(results.metrics)
-```
-
----
-
 ## 🧩 Dependencies
 
 - Python ≥ 3.9  
@@ -112,13 +88,9 @@ print(results.metrics)
 
 ---
 
-## 🤝 Contributing
+## 🤝 Author
 
-Pull requests are welcome!  
-Please ensure that your code:
-- follows PEP8
-- includes clear docstrings
-- passes existing tests
+Wentian Wang littlenova223@gmail.com
 
 ---
 
@@ -129,10 +101,5 @@ See the [`LICENSE`](LICENSE) file for details.
 
 ---
 
-## 📜 Author
-
-Wentian Wang littlenova223@gmail.com
-
----
 
 ✳️ Maintainer: [Quantum Group](https://github.com/Quantum-Group-GOGOGO)
