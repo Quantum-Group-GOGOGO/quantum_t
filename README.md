@@ -92,4 +92,4 @@ See the [`LICENSE`](LICENSE) file for details.
 ---
 
 
-✳️ Maintainer: [Quantum Group](https://github.com/Quantum-Group-GOGOGO) Wentian Wang
+✳️ Maintainer: [Quantum Group](https://github.com/Quantum-Group-GOGOGO) Wentian Wang (littlenova223@gmail.com)
